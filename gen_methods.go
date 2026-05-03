@@ -9061,7 +9061,7 @@ func (c *Client) SendMessage(chatId int64, inputMessageContent InputMessageConte
 	if err != nil {
 		return nil, err
 	}
-	return c.WaitMessage(resp.(*Message))
+	return c.waitMessage(resp.(*Message))
 }
 
 // SendMessageAlbum Sends 2-10 messages grouped together into an album. Currently, only audio, document, photo and video messages can be grouped into an album.
@@ -9079,7 +9079,7 @@ func (c *Client) SendMessageAlbum(chatId int64, inputMessageContents []InputMess
 	if err != nil {
 		return nil, err
 	}
-	return c.WaitMessages(resp.(*Messages))
+	return c.waitMessages(resp.(*Messages))
 }
 
 // SendMessageViewMetrics Informs TDLib about details of a message view by the user from a chat, a message thread or a forum topic history. The method must be called if

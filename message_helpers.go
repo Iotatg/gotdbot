@@ -281,6 +281,71 @@ func (m *Message) RemoteFileID() string {
 	return ""
 }
 
+// RemoteDuration returns the remote media duration.
+func (m *Message) RemoteDuration() int32 {
+	if m.Content == nil {
+		return 0
+	}
+	if c, ok := m.Content.(*MessageVideo); ok {
+		return c.Video.Duration
+	}
+	if c, ok := m.Content.(*MessageAnimation); ok {
+		return c.Animation.Duration
+	}
+	if c, ok := m.Content.(*MessageAudio); ok {
+		return c.Audio.Duration
+	}
+	if c, ok := m.Content.(*MessageVoiceNote); ok {
+		return c.VoiceNote.Duration
+	}
+	if c, ok := m.Content.(*MessageVideoNote); ok {
+		return c.VideoNote.Duration
+	}
+	return 0
+}
+
+// RemoteFileSize returns the remote file size.
+func (m *Message) RemoteFileSize() int64 {
+	if m.Content == nil {
+		return 0
+	}
+	getFileSize := func(f *File) int64 {
+		if f != nil {
+			if f.Size > 0 {
+				return f.Size
+			}
+			return f.ExpectedSize
+		}
+		return 0
+	}
+
+	if c, ok := m.Content.(*MessagePhoto); ok && len(c.Photo.Sizes) > 0 {
+		return getFileSize(c.Photo.Sizes[len(c.Photo.Sizes)-1].Photo)
+	}
+	if c, ok := m.Content.(*MessageVideo); ok {
+		return getFileSize(c.Video.Video)
+	}
+	if c, ok := m.Content.(*MessageSticker); ok {
+		return getFileSize(c.Sticker.Sticker)
+	}
+	if c, ok := m.Content.(*MessageAnimation); ok {
+		return getFileSize(c.Animation.Animation)
+	}
+	if c, ok := m.Content.(*MessageAudio); ok {
+		return getFileSize(c.Audio.Audio)
+	}
+	if c, ok := m.Content.(*MessageDocument); ok {
+		return getFileSize(c.Document.Document)
+	}
+	if c, ok := m.Content.(*MessageVoiceNote); ok {
+		return getFileSize(c.VoiceNote.Voice)
+	}
+	if c, ok := m.Content.(*MessageVideoNote); ok {
+		return getFileSize(c.VideoNote.Video)
+	}
+	return 0
+}
+
 // RemoteUniqueFileID returns the remote unique file ID.
 func (m *Message) RemoteUniqueFileID() string {
 	if m.Content == nil {
@@ -450,6 +515,19 @@ func (m *Message) ReplyText(c *Client, text string, opts *SendTextMessageOpts) (
 		opts.ReplyToMessageID = m.Id
 	}
 	return c.SendTextMessage(m.ChatId, text, opts)
+}
+
+// ReplyAlbum replies to the message with an album.
+func (m *Message) ReplyAlbum(c *Client, inputMessageContents []InputMessageContent, opts *SendMessageAlbumOpts) (*Messages, error) {
+	if opts == nil {
+		opts = &SendMessageAlbumOpts{}
+	}
+	if opts.ReplyTo == nil {
+		opts.ReplyTo = &InputMessageReplyToMessage{
+			MessageId: m.Id,
+		}
+	}
+	return c.SendMessageAlbum(m.ChatId, inputMessageContents, opts)
 }
 
 // ReplyAnimation replies to the message with animation.

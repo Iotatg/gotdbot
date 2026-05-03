@@ -390,7 +390,7 @@ func (c *Client) messageSendSucceededHandler(client *Client, update TlObject) er
 
 	key := fmt.Sprintf("%d:%d", u.Message.ChatId, u.OldMessageId)
 	if ch, ok := c.pendingMessages.Load(key); ok {
-		ch.(chan TlObject) <- u.Message
+		ch.(chan TlObject) <- u
 		c.pendingMessages.Delete(key)
 	}
 
@@ -528,8 +528,8 @@ func (c *Client) handleAutoRetry(req map[string]interface{}, errObj *Error, isCh
 	return false
 }
 
-// WaitMessage waits for the message to be sent and returns the final message.
-func (c *Client) WaitMessage(msg *Message) (*Message, error) {
+// waitMessage waits for the message to be sent and returns the final message.
+func (c *Client) waitMessage(msg *Message) (*Message, error) {
 	if msg.SendingState != nil && msg.SendingState.GetType() == "messageSendingStatePending" {
 		key := fmt.Sprintf("%d:%d", msg.ChatId, msg.Id)
 		ch := make(chan TlObject, 1)
@@ -547,6 +547,9 @@ func (c *Client) WaitMessage(msg *Message) (*Message, error) {
 			if finalMsg, ok := res.(*Message); ok {
 				return finalMsg, nil
 			}
+			if u, ok := res.(*UpdateMessageSendSucceeded); ok {
+				return u.Message, nil
+			}
 			return nil, fmt.Errorf("unexpected response type from waiter: %T", res)
 		case <-time.After(30 * time.Second):
 			return msg, nil
@@ -556,30 +559,71 @@ func (c *Client) WaitMessage(msg *Message) (*Message, error) {
 	return msg, nil
 }
 
-// WaitMessages waits for all messages in the album to be sent and returns the final messages.
-func (c *Client) WaitMessages(msgs *Messages) (*Messages, error) {
-	if msgs == nil {
-		return nil, nil
+// waitMessages waits for all messages in the album to be sent and returns the final messages.
+func (c *Client) waitMessages(msgs *Messages) (*Messages, error) {
+	if msgs == nil || len(msgs.Messages) == 0 {
+		return msgs, nil
 	}
 
-	var wg sync.WaitGroup
-	errs := make([]error, len(msgs.Messages))
+	totalCount := len(msgs.Messages)
+	ch := make(chan TlObject, totalCount)
+	errs := make([]error, totalCount)
 
 	for i := range msgs.Messages {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			finalMsg, e := c.WaitMessage(&msgs.Messages[i])
-			if finalMsg != nil {
-				msgs.Messages[i] = *finalMsg
-			}
-			if e != nil {
-				errs[i] = e
-			}
-		}(i)
+		msg := &msgs.Messages[i]
+		if msg.SendingState != nil && msg.SendingState.GetType() == "messageSendingStatePending" {
+			key := fmt.Sprintf("%d:%d", msg.ChatId, msg.Id)
+			c.pendingMessages.Store(key, ch)
+		} else {
+			ch <- msg
+		}
 	}
 
-	wg.Wait()
+	defer func() {
+		for i := range msgs.Messages {
+			msg := &msgs.Messages[i]
+			key := fmt.Sprintf("%d:%d", msg.ChatId, msg.Id)
+			c.pendingMessages.Delete(key)
+		}
+	}()
+
+	var receivedCount int
+	timeout := time.After(30 * time.Second)
+
+	for receivedCount < totalCount {
+		select {
+		case res := <-ch:
+			if errObj, ok := res.(*Error); ok {
+				errs[receivedCount] = errObj
+			} else if u, ok := res.(*UpdateMessageSendFailed); ok {
+				errs[receivedCount] = u.Error
+				for i := range msgs.Messages {
+					if msgs.Messages[i].Id == u.OldMessageId {
+						msgs.Messages[i] = *u.Message
+						break
+					}
+				}
+			} else if finalMsg, ok := res.(*Message); ok {
+				for i := range msgs.Messages {
+					if msgs.Messages[i].Id == finalMsg.Id {
+						msgs.Messages[i] = *finalMsg
+						break
+					}
+				}
+			} else if u, ok := res.(*UpdateMessageSendSucceeded); ok {
+				for i := range msgs.Messages {
+					if msgs.Messages[i].Id == u.OldMessageId {
+						msgs.Messages[i] = *u.Message
+						break
+					}
+				}
+			}
+			receivedCount++
+		case <-timeout:
+			return msgs, errors.Join(errs...)
+		}
+	}
+
 	return msgs, errors.Join(errs...)
 }
 
