@@ -77,6 +77,52 @@ func (m *Message) IsCommand() bool {
 	return false
 }
 
+// Args returns the message arguments excluding the command itself.
+func (m *Message) Args() string {
+	return strings.Join(m.ArgsList(), " ")
+}
+
+// ArgsList returns all arguments excluding the command name.
+func (m *Message) ArgsList() []string {
+	parts := strings.Fields(m.Text())
+
+	if len(parts) < 2 {
+		return nil
+	}
+
+	return parts[1:]
+}
+
+// Arg returns the argument at the given index.
+func (m *Message) Arg(index int) string {
+	args := m.ArgsList()
+	if index < 0 || index >= len(args) {
+		return ""
+	}
+
+	return args[index]
+}
+
+// StartsWith reports whether the message starts with prefix.
+func (m *Message) StartsWith(prefix string) bool {
+	return strings.HasPrefix(m.GetText(), prefix)
+}
+
+// EndsWith reports whether the message ends with suffix.
+func (m *Message) EndsWith(suffix string) bool {
+	return strings.HasSuffix(m.GetText(), suffix)
+}
+
+// TrimmedText returns the message without surrounding spaces.
+func (m *Message) TrimmedText() string {
+	return strings.TrimSpace(m.GetText())
+}
+
+// Empty reports whether the message has any content.
+func (m *Message) Empty() bool {
+	return strings.TrimSpace(m.GetText()) == ""
+}
+
 // SenderID returns the user ID or chat ID of the sender.
 func (m *Message) SenderID() int64 {
 	if m.SenderId == nil {
