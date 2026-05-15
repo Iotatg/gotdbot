@@ -43,7 +43,7 @@ func (t *UpdateNewCallbackQuery) GameShortName() string {
 
 // IsPrivate checks if the callback query originated from a private chat.
 func (t *UpdateNewCallbackQuery) IsPrivate() bool {
-	return t.ChatId > 0 && t.ChatId < 1e9
+	return t.ChatId > 0
 }
 
 // GetMessage returns the message that originated the query.

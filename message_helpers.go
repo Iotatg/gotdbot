@@ -547,8 +547,11 @@ func (m *Message) React(c *Client, reactionTypes []ReactionType, opts *SetMessag
 }
 
 // Action sends a chat action to a specific chat.
-func (m *Message) Action(c *Client, action string, topicId MessageTopic) (*ChatActionSender, error) {
-	return NewChatAction(c, m.ChatId, action, topicId)
+func (m *Message) Action(c *Client, opts *SendChatActionOpts) error {
+	if opts == nil {
+		opts = &SendChatActionOpts{Action: ChatActionTyping{}}
+	}
+	return c.SendChatAction("", m.ChatId, opts)
 }
 
 // ReplyText replies to the message with text.
