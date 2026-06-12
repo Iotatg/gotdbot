@@ -1477,3 +1477,113 @@ func (c *Client) SendVenue(chatId int64, venue *Venue, opts *SendVenueOpts) (*Me
 		UpdateOrderOfInstalledStickerSets: opts.UpdateOrderOfInstalledStickerSets,
 	}, opts.TopicId, opts.Quote, opts.ReplyTo, opts.ReplyToMessageID, opts.ReplyMarkup)
 }
+
+// EditContent edits a message with the given content.
+func (c *Client) EditContent(chatId int64, messageId int64, content InputMessageContent, replyMarkup ReplyMarkup) (*Message, error) {
+	switch t := content.(type) {
+	case *InputMessageText, *InputMessageRichMessage:
+		return c.EditMessageText(chatId, content, messageId, &EditMessageTextOpts{
+			ReplyMarkup: replyMarkup,
+		})
+	case *InputMessageAnimation, *InputMessageAudio, *InputMessageDocument, *InputMessagePhoto, *InputMessageVideo:
+		return c.EditMessageMedia(chatId, content, messageId, &EditMessageMediaOpts{
+			ReplyMarkup: replyMarkup,
+		})
+	case *InputMessageLiveLocation:
+		return c.EditMessageLiveLocation(chatId, messageId, &EditMessageLiveLocationOpts{
+			Location:    t.Location,
+			ReplyMarkup: replyMarkup,
+		})
+	case *InputMessageChecklist:
+		return c.EditMessageChecklist(chatId, t.Checklist, messageId, &EditMessageChecklistOpts{
+			ReplyMarkup: replyMarkup,
+		})
+	default:
+		return nil, fmt.Errorf("unsupported content type for editing: %T", content)
+	}
+}
+
+// EditReplyMarkup edits the reply markup of a message.
+func (c *Client) EditReplyMarkup(chatId int64, messageId int64, replyMarkup ReplyMarkup) (*Message, error) {
+	return c.EditMessageReplyMarkup(chatId, messageId, &EditMessageReplyMarkupOpts{
+		ReplyMarkup: replyMarkup,
+	})
+}
+
+// SendContent sends a message with the given content.
+func (c *Client) SendContent(chatId int64, content InputMessageContent, opts *SendMessageOpts) (*Message, error) {
+	return c.SendMessage(chatId, content, opts)
+}
+
+// SendRichMessage sends a rich message to chat.
+func (c *Client) SendRichMessage(chatId int64, richMessage *InputRichMessage, opts *SendTextMessageOpts) (*Message, error) {
+	if opts == nil {
+		opts = &SendTextMessageOpts{}
+	}
+
+	content := &InputMessageRichMessage{
+		ClearDraft: opts.ClearDraft,
+		Message:    richMessage,
+	}
+
+	return c.sendMessageWithContent(chatId, content, &MessageSendOptions{
+		DisableNotification:               opts.DisableNotification,
+		ProtectContent:                    opts.ProtectContent,
+		AllowPaidBroadcast:                opts.AllowPaidBroadcast,
+		EffectId:                          opts.EffectId,
+		FromBackground:                    opts.FromBackground,
+		OnlyPreview:                       opts.OnlyPreview,
+		PaidMessageStarCount:              opts.PaidMessageStarCount,
+		SchedulingState:                   opts.SchedulingState,
+		SendingId:                         opts.SendingId,
+		SuggestedPostInfo:                 opts.SuggestedPostInfo,
+		UpdateOrderOfInstalledStickerSets: opts.UpdateOrderOfInstalledStickerSets,
+	}, opts.TopicId, opts.Quote, opts.ReplyTo, opts.ReplyToMessageID, opts.ReplyMarkup)
+}
+
+type SendForwardedOpts struct {
+	InGameShare                       bool
+	DisableNotification               bool
+	EffectId                          int64
+	ReplaceVideoStartTimestamp        bool
+	NewVideoStartTimestamp            int32
+	FromBackground                    bool
+	OnlyPreview                       bool
+	PaidMessageStarCount              int64
+	ProtectContent                    bool
+	SchedulingState                   MessageSchedulingState
+	SendingId                         int32
+	UpdateOrderOfInstalledStickerSets bool
+	TopicId                           MessageTopic
+	Quote                             *InputTextQuote
+	ReplyTo                           InputMessageReplyTo
+	ReplyToMessageID                  int64
+	ReplyMarkup                       ReplyMarkup
+}
+
+// SendForwarded sends a forwarded message to chat.
+func (c *Client) SendForwarded(chatId int64, fromChatId int64, messageId int64, inGameShare bool, opts *SendForwardedOpts) (*Message, error) {
+	if opts == nil {
+		opts = &SendForwardedOpts{}
+	}
+
+	content := &InputMessageForwarded{
+		FromChatId:                 fromChatId,
+		MessageId:                  messageId,
+		InGameShare:                inGameShare,
+		ReplaceVideoStartTimestamp: opts.ReplaceVideoStartTimestamp,
+		NewVideoStartTimestamp:     opts.NewVideoStartTimestamp,
+	}
+
+	return c.sendMessageWithContent(chatId, content, &MessageSendOptions{
+		DisableNotification:               opts.DisableNotification,
+		EffectId:                          opts.EffectId,
+		FromBackground:                    opts.FromBackground,
+		OnlyPreview:                       opts.OnlyPreview,
+		PaidMessageStarCount:              opts.PaidMessageStarCount,
+		ProtectContent:                    opts.ProtectContent,
+		SchedulingState:                   opts.SchedulingState,
+		SendingId:                         opts.SendingId,
+		UpdateOrderOfInstalledStickerSets: opts.UpdateOrderOfInstalledStickerSets,
+	}, opts.TopicId, opts.Quote, opts.ReplyTo, opts.ReplyToMessageID, opts.ReplyMarkup)
+}

@@ -833,3 +833,43 @@ func (m *Message) ReplyCopy(c *Client, fromChatId int64, messageId int64, opts *
 	}
 	return c.SendCopy(m.ChatId, fromChatId, messageId, opts)
 }
+
+// EditContent edits the message with the given content.
+func (m *Message) EditContent(c *Client, content InputMessageContent, replyMarkup ReplyMarkup) (*Message, error) {
+	return c.EditContent(m.ChatId, m.Id, content, replyMarkup)
+}
+
+// ReplyContent replies to the message with the given content.
+func (m *Message) ReplyContent(c *Client, content InputMessageContent, opts *SendMessageOpts) (*Message, error) {
+	if opts == nil {
+		opts = &SendMessageOpts{}
+	}
+	if opts.ReplyTo == nil {
+		opts.ReplyTo = &InputMessageReplyToMessage{
+			MessageId: m.Id,
+		}
+	}
+	return c.SendContent(m.ChatId, content, opts)
+}
+
+// ReplyRichMessage replies to the message with a rich message.
+func (m *Message) ReplyRichMessage(c *Client, richMessage *InputRichMessage, opts *SendTextMessageOpts) (*Message, error) {
+	if opts == nil {
+		opts = &SendTextMessageOpts{}
+	}
+	if opts.ReplyToMessageID == 0 {
+		opts.ReplyToMessageID = m.Id
+	}
+	return c.SendRichMessage(m.ChatId, richMessage, opts)
+}
+
+// ReplyForwarded replies to the message by forwarding another message.
+func (m *Message) ReplyForwarded(c *Client, fromChatId int64, messageId int64, inGameShare bool, opts *SendForwardedOpts) (*Message, error) {
+	if opts == nil {
+		opts = &SendForwardedOpts{}
+	}
+	if opts.ReplyToMessageID == 0 {
+		opts.ReplyToMessageID = m.Id
+	}
+	return c.SendForwarded(m.ChatId, fromChatId, messageId, inGameShare, opts)
+}
