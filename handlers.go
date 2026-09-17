@@ -242,6 +242,55 @@ func (c *Client) AddHandlerGroup(handler Handler, group int) {
 	})
 }
 
+func (c *Client) RemoveHandler(handler Handler) bool {
+	return c.RemoveHandlerGroup(handler, 0)
+}
+
+func (c *Client) RemoveHandlerGroup(handler Handler, group int) bool {
+	c.hMu.Lock()
+	defer c.hMu.Unlock()
+
+	oldData := c.handlers.Load()
+	if oldData == nil {
+		return false
+	}
+	list := oldData.handlers[group]
+	idx := -1
+	for i, h := range list {
+		if h == handler {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		return false
+	}
+
+	newMap := make(map[int][]Handler, len(oldData.handlers))
+	for k, v := range oldData.handlers {
+		newMap[k] = v
+	}
+	next := make([]Handler, 0, len(list)-1)
+	next = append(next, list[:idx]...)
+	next = append(next, list[idx+1:]...)
+	if len(next) == 0 {
+		delete(newMap, group)
+	} else {
+		newMap[group] = next
+	}
+
+	groups := make([]int, 0, len(newMap))
+	for k := range newMap {
+		groups = append(groups, k)
+	}
+	sort.Ints(groups)
+	c.handlers.Store(&handlersData{
+		handlers: newMap,
+		groups:   groups,
+	})
+	return true
+}
+
 // OnCommand registers a new command handler with the default group (0).
 func (c *Client) OnCommand(command string, handler func(client *Client, message *Message) error) *CommandHandler {
 	return c.OnCommandGroup(command, handler, 0)
