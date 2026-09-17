@@ -216,6 +216,48 @@ func TestFileProgressPercent(t *testing.T) {
 	}
 }
 
+func TestRequestAndDisabledButtons(t *testing.T) {
+	disabled := gotdbot.DisabledButton("soon")
+	if _, ok := disabled.Type.(*gotdbot.InlineKeyboardButtonTypeDisabled); !ok {
+		t.Fatalf("disabled button")
+	}
+	users := gotdbot.RequestUsersButton("pick", 7, &gotdbot.RequestUsersButtonOpts{MaxQuantity: 3, RequestName: true})
+	u, ok := users.Type.(*gotdbot.KeyboardButtonTypeRequestUsers)
+	if !ok || u.Id != 7 || u.MaxQuantity != 3 || !u.RequestName {
+		t.Fatalf("request users button")
+	}
+	chat := gotdbot.RequestChatButton("chat", 2, &gotdbot.RequestChatButtonOpts{ChatIsChannel: true})
+	ch, ok := chat.Type.(*gotdbot.KeyboardButtonTypeRequestChat)
+	if !ok || ch.Id != 2 || !ch.ChatIsChannel {
+		t.Fatalf("request chat button")
+	}
+	poll := gotdbot.RequestPollButton("quiz", true)
+	p, ok := poll.Type.(*gotdbot.KeyboardButtonTypeRequestPoll)
+	if !ok || !p.ForceQuiz || p.ForceRegular {
+		t.Fatalf("request poll button")
+	}
+}
+
+func TestDefaultAdminRightsWelcome(t *testing.T) {
+	rights := gotdbot.DefaultAdminRights()
+	if !rights.CanSendWelcomeMessages || !rights.CanManageChat {
+		t.Fatalf("welcome messages right")
+	}
+}
+
+func TestRequestUsersButtonDefaultQuantity(t *testing.T) {
+	btn := gotdbot.RequestUsersButton("pick", 1, nil)
+	u, ok := btn.Type.(*gotdbot.KeyboardButtonTypeRequestUsers)
+	if !ok || u.MaxQuantity != 1 {
+		t.Fatalf("default max quantity")
+	}
+	zero := gotdbot.RequestUsersButton("pick", 1, &gotdbot.RequestUsersButtonOpts{MaxQuantity: 0})
+	z, ok := zero.Type.(*gotdbot.KeyboardButtonTypeRequestUsers)
+	if !ok || z.MaxQuantity != 1 {
+		t.Fatalf("zero max quantity should default to 1")
+	}
+}
+
 func TestCommandsWithPrefixFilter(t *testing.T) {
 	msg := &gotdbot.Message{
 		Content: &gotdbot.MessageText{Text: &gotdbot.FormattedText{Text: "!ban user"}},

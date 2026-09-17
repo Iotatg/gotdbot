@@ -59,3 +59,43 @@ func (c *Client) OnBusinessMessage(handler func(client *Client, update *UpdateNe
 func (c *Client) OnChatBoost(handler func(client *Client, update *UpdateChatBoost) error, filter func(u *UpdateChatBoost) bool) {
 	c.OnUpdateChatBoost(handler, filter)
 }
+
+func (c *Client) OnStory(handler func(client *Client, update *UpdateStory) error, filter func(u *UpdateStory) bool) {
+	c.OnUpdateStory(handler, filter)
+}
+
+func (c *Client) OnUserStatus(handler func(client *Client, update *UpdateUserStatus) error, filter func(u *UpdateUserStatus) bool) {
+	c.OnUpdateUserStatus(handler, filter)
+}
+
+func (c *Client) OnMessageReaction(handler func(client *Client, update *UpdateMessageReaction) error, filter func(u *UpdateMessageReaction) bool) {
+	c.OnUpdateMessageReaction(handler, filter)
+}
+
+func (c *Client) OnGuest(handler func(client *Client, update *UpdateNewGuestQuery) error, filter func(u *UpdateNewGuestQuery) bool) {
+	c.OnUpdateNewGuestQuery(handler, filter)
+}
+
+func (c *Client) OnError(handler func(client *Client, update TlObject, err error) error) {
+	c.errorMu.Lock()
+	c.errorHandler = handler
+	c.errorMu.Unlock()
+}
+
+func (c *Client) OnConnect(handler func(client *Client) error) {
+	if handler == nil {
+		return
+	}
+	c.lifecycleMu.Lock()
+	c.connectHandlers = append(c.connectHandlers, handler)
+	c.lifecycleMu.Unlock()
+}
+
+func (c *Client) OnDisconnect(handler func(client *Client) error) {
+	if handler == nil {
+		return
+	}
+	c.lifecycleMu.Lock()
+	c.disconnectHandlers = append(c.disconnectHandlers, handler)
+	c.lifecycleMu.Unlock()
+}

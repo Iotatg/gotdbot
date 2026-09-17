@@ -45,6 +45,7 @@ type Client struct {
 	handlers     atomic.Pointer[handlersData]
 	hMu          sync.Mutex
 	panicHandler func(client *Client, update TlObject, r interface{})
+	errorMu      sync.Mutex
 	errorHandler func(client *Client, update TlObject, err error) error
 
 	pendingRequests sync.Map // map[string]chan TlObject
@@ -56,6 +57,11 @@ type Client struct {
 
 	middlewares []Middleware
 	mwMu        sync.Mutex
+
+	lifecycleMu        sync.Mutex
+	connectionReady    bool
+	connectHandlers    []func(client *Client) error
+	disconnectHandlers []func(client *Client) error
 
 	// Auth state management
 	authErrorChan chan error
@@ -209,12 +215,15 @@ func (c *Client) Idle() {
 // will be sent. Can be called before initialization.
 func (c *Client) Close() {
 	c.closeOnce.Do(func() {
+		_ = c.emitDisconnect()
 		_, _ = c.Send(&Close{})
 
 		select {
 		case <-c.closed:
 		case <-time.After(5 * time.Second):
-			c.Logger.Warn("Timeout waiting for TDLib to close")
+			if c.Logger != nil {
+				c.Logger.Warn("Timeout waiting for TDLib to close")
+			}
 		}
 
 		close(c.stop)
@@ -282,8 +291,11 @@ func (c *Client) processor() {
 					if errors.Is(err, EndGroups) || errors.Is(err, ContinueGroups) || errors.Is(err, ContinueHandlers) {
 						return err
 					}
-					if c.errorHandler != nil {
-						return c.errorHandler(c, update, err)
+					c.errorMu.Lock()
+					onErr := c.errorHandler
+					c.errorMu.Unlock()
+					if onErr != nil {
+						return onErr(c, update, err)
 					}
 					c.Logger.Error("Handler error", "error", err, "type", update.GetType())
 					return nil
@@ -494,6 +506,7 @@ func (c *Client) authHandler(client *Client, authState *UpdateAuthorizationState
 		if !c.isAuthorized {
 			c.sendAuthError(fmt.Errorf("authorization closed unexpectedly"))
 		}
+		_ = c.emitDisconnect()
 		select {
 		case <-c.closed:
 		default:
@@ -503,9 +516,54 @@ func (c *Client) authHandler(client *Client, authState *UpdateAuthorizationState
 	return nil
 }
 
+func (c *Client) emitConnect() error {
+	c.lifecycleMu.Lock()
+	if c.connectionReady {
+		c.lifecycleMu.Unlock()
+		return nil
+	}
+	c.connectionReady = true
+	handlers := append([]func(client *Client) error(nil), c.connectHandlers...)
+	c.lifecycleMu.Unlock()
+	for _, h := range handlers {
+		if err := h(c); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Client) emitDisconnect() error {
+	c.lifecycleMu.Lock()
+	if !c.connectionReady {
+		c.lifecycleMu.Unlock()
+		return nil
+	}
+	c.connectionReady = false
+	handlers := append([]func(client *Client) error(nil), c.disconnectHandlers...)
+	c.lifecycleMu.Unlock()
+	for _, h := range handlers {
+		if err := h(c); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (c *Client) connectionStateHandler(client *Client, u *UpdateConnectionState) error {
+	if u == nil || u.State == nil {
+		return nil
+	}
 	state := strings.TrimPrefix(u.State.GetType(), "connectionState")
-	c.Logger.Info("Connection state changed", "state", state)
+	if c.Logger != nil {
+		c.Logger.Info("Connection state changed", "state", state)
+	}
+	switch u.State.(type) {
+	case *ConnectionStateReady:
+		return c.emitConnect()
+	case *ConnectionStateWaitingForNetwork:
+		return c.emitDisconnect()
+	}
 	return nil
 }
 

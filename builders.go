@@ -149,3 +149,83 @@ func ForceReplyMarkup(placeholder string, personal bool) *ReplyMarkupForceReply 
 		IsPersonal:            personal,
 	}
 }
+
+func DisabledButton(text string) InlineKeyboardButton {
+	return InlineKeyboardButton{
+		Text: text,
+		Type: &InlineKeyboardButtonTypeDisabled{},
+	}
+}
+
+type RequestUsersButtonOpts struct {
+	MaxQuantity           int32
+	RequestName           bool
+	RequestPhoto          bool
+	RequestUsername       bool
+	RestrictUserIsBot     bool
+	RestrictUserIsPremium bool
+	UserIsBot             bool
+	UserIsPremium         bool
+}
+
+func RequestUsersButton(text string, id int32, opts *RequestUsersButtonOpts) KeyboardButton {
+	btn := KeyboardButtonTypeRequestUsers{Id: id, MaxQuantity: 1}
+	if opts != nil {
+		btn.MaxQuantity = opts.MaxQuantity
+		btn.RequestName = opts.RequestName
+		btn.RequestPhoto = opts.RequestPhoto
+		btn.RequestUsername = opts.RequestUsername
+		btn.RestrictUserIsBot = opts.RestrictUserIsBot
+		btn.RestrictUserIsPremium = opts.RestrictUserIsPremium
+		btn.UserIsBot = opts.UserIsBot
+		btn.UserIsPremium = opts.UserIsPremium
+	}
+	if btn.MaxQuantity <= 0 {
+		btn.MaxQuantity = 1
+	}
+	return KeyboardButton{Text: text, Type: &btn}
+}
+
+type RequestChatButtonOpts struct {
+	BotAdministratorRights  *ChatAdministratorRights
+	BotIsMember             bool
+	ChatHasUsername         bool
+	ChatIsChannel           bool
+	ChatIsCreated           bool
+	ChatIsForum             bool
+	RequestPhoto            bool
+	RequestTitle            bool
+	RequestUsername         bool
+	RestrictChatHasUsername bool
+	RestrictChatIsForum     bool
+	UserAdministratorRights *ChatAdministratorRights
+}
+
+func RequestChatButton(text string, id int32, opts *RequestChatButtonOpts) KeyboardButton {
+	btn := KeyboardButtonTypeRequestChat{Id: id}
+	if opts != nil {
+		btn.BotAdministratorRights = opts.BotAdministratorRights
+		btn.BotIsMember = opts.BotIsMember
+		btn.ChatHasUsername = opts.ChatHasUsername
+		btn.ChatIsChannel = opts.ChatIsChannel
+		btn.ChatIsCreated = opts.ChatIsCreated
+		btn.ChatIsForum = opts.ChatIsForum
+		btn.RequestPhoto = opts.RequestPhoto
+		btn.RequestTitle = opts.RequestTitle
+		btn.RequestUsername = opts.RequestUsername
+		btn.RestrictChatHasUsername = opts.RestrictChatHasUsername
+		btn.RestrictChatIsForum = opts.RestrictChatIsForum
+		btn.UserAdministratorRights = opts.UserAdministratorRights
+	}
+	return KeyboardButton{Text: text, Type: &btn}
+}
+
+func RequestPollButton(text string, quiz bool) KeyboardButton {
+	return KeyboardButton{
+		Text: text,
+		Type: &KeyboardButtonTypeRequestPoll{
+			ForceQuiz:    quiz,
+			ForceRegular: !quiz,
+		},
+	}
+}

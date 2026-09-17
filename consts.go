@@ -1,7 +1,7 @@
 package gotdbot
 
 const (
-	Version      = "v0.10.0"
+	Version      = "v0.11.0"
 	TDLibVersion = "v1.8.67"
 )
 

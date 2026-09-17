@@ -687,9 +687,37 @@ func (m *Message) Copy(c *Client, chatId int64, opts *SendCopyOpts) (*Message, e
 	return c.SendCopy(chatId, m.ChatId, m.Id, opts)
 }
 
+func (m *Message) CopyTo(c *Client, chatId int64, opts *SendCopyOpts) (*Message, error) {
+	if m == nil {
+		return nil, ErrInvalidMessageID
+	}
+	return m.Copy(c, chatId, opts)
+}
+
 // Forward forwards message to chat.
 func (m *Message) Forward(c *Client, chatId int64, opts *ForwardMessageOpts) (*Message, error) {
 	return c.ForwardMessage(chatId, m.ChatId, m.Id, opts)
+}
+
+func (m *Message) ForwardTo(c *Client, chatId int64, opts *ForwardMessageOpts) (*Message, error) {
+	if m == nil {
+		return nil, ErrInvalidMessageID
+	}
+	return m.Forward(c, chatId, opts)
+}
+
+func (m *Message) Vote(c *Client, optionIds []int32) error {
+	if m == nil {
+		return ErrInvalidMessageID
+	}
+	return c.VotePoll(m.ChatId, m.Id, optionIds)
+}
+
+func (m *Message) RetractVote(c *Client) error {
+	if m == nil {
+		return ErrInvalidMessageID
+	}
+	return c.RetractPollVote(m.ChatId, m.Id)
 }
 
 // EditText edits a text message.

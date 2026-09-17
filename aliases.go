@@ -1,9 +1,5 @@
 package gotdbot
 
-import (
-	"strings"
-)
-
 func (c *Client) BanUser(chatId, userId int64, bannedUntilDate int32, revokeMessages bool) error {
 	return c.BanChatMember(bannedUntilDate, chatId, UserSender(userId), &BanChatMemberOpts{RevokeMessages: revokeMessages})
 }
@@ -26,34 +22,42 @@ func (c *Client) RestrictUser(chatId, userId int64, permissions *ChatPermissions
 
 type PromoteOpts struct {
 	Rights      *ChatAdministratorRights
-	CanBeEdited bool
+	CanBeEdited *bool
 }
 
 func DefaultAdminRights() *ChatAdministratorRights {
 	return &ChatAdministratorRights{
-		CanChangeInfo:       true,
-		CanDeleteMessages:   true,
-		CanInviteUsers:      true,
-		CanPinMessages:      true,
-		CanManageVideoChats: true,
-		CanRestrictMembers:  true,
-		CanManageChat:       true,
-		CanManageTopics:     true,
-		CanPostStories:      true,
-		CanEditStories:      true,
-		CanDeleteStories:    true,
+		CanChangeInfo:          true,
+		CanDeleteMessages:      true,
+		CanInviteUsers:         true,
+		CanPinMessages:         true,
+		CanManageVideoChats:    true,
+		CanRestrictMembers:     true,
+		CanManageChat:          true,
+		CanManageTopics:        true,
+		CanPostStories:         true,
+		CanEditStories:         true,
+		CanDeleteStories:       true,
+		CanSendWelcomeMessages: true,
 	}
 }
 
-func (c *Client) PromoteUser(chatId, userId int64, opts *PromoteOpts) error {
+func promoteSettings(opts *PromoteOpts) (*ChatAdministratorRights, bool) {
 	rights := DefaultAdminRights()
 	canBeEdited := true
 	if opts != nil {
 		if opts.Rights != nil {
 			rights = opts.Rights
 		}
-		canBeEdited = opts.CanBeEdited
+		if opts.CanBeEdited != nil {
+			canBeEdited = *opts.CanBeEdited
+		}
 	}
+	return rights, canBeEdited
+}
+
+func (c *Client) PromoteUser(chatId, userId int64, opts *PromoteOpts) error {
+	rights, canBeEdited := promoteSettings(opts)
 	return c.SetChatMemberStatus(chatId, UserSender(userId), &ChatMemberStatusAdministrator{
 		CanBeEdited: canBeEdited,
 		Rights:      rights,
@@ -65,7 +69,10 @@ func (c *Client) GetChatMemberByUser(chatId, userId int64) (*ChatMember, error) 
 }
 
 func (c *Client) ResolveUsername(username string) (*Chat, error) {
-	username = strings.TrimPrefix(strings.TrimSpace(username), "@")
+	username = publicUsername(username)
+	if username == "" {
+		return nil, nil
+	}
 	return c.SearchPublicChat(username)
 }
 
@@ -81,9 +88,7 @@ func (c *Client) DownloadMedia(msg *Message, synchronous bool) (*File, error) {
 }
 
 func (c *Client) GetChatHistoryPage(chatId int64, fromMessageId int64, limit int32) ([]Message, error) {
-	if limit <= 0 {
-		limit = 100
-	}
+	limit = clampLimit(limit, 100, 100)
 	res, err := c.GetChatHistory(chatId, fromMessageId, limit, 0, nil)
 	if err != nil {
 		return nil, err
@@ -95,10 +100,12 @@ func (c *Client) GetChatHistoryPage(chatId int64, fromMessageId int64, limit int
 }
 
 func (c *Client) IterChatHistory(chatId int64, fromMessageId int64, limit int32, fn func(msg Message) bool) error {
-	if limit <= 0 {
-		limit = 100
+	if fn == nil {
+		return nil
 	}
+	limit = clampLimit(limit, 100, 100)
 	cursor := fromMessageId
+	skipCursor := false
 	for {
 		page, err := c.GetChatHistoryPage(chatId, cursor, limit)
 		if err != nil {
@@ -107,15 +114,23 @@ func (c *Client) IterChatHistory(chatId int64, fromMessageId int64, limit int32,
 		if len(page) == 0 {
 			return nil
 		}
+		next := cursor
+		yielded := 0
 		for _, msg := range page {
+			if msg.Id == 0 || (skipCursor && msg.Id == cursor) {
+				continue
+			}
 			if !fn(msg) {
 				return nil
 			}
-			cursor = msg.Id
+			next = msg.Id
+			yielded++
 		}
-		if int32(len(page)) < limit {
+		if yielded == 0 || next == cursor || int32(len(page)) < limit {
 			return nil
 		}
+		cursor = next
+		skipCursor = true
 	}
 }
 
