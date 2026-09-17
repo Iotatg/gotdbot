@@ -1,9 +1,13 @@
 <p align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,19,26&height=240&section=header&text=gotdbot&fontSize=72&fontColor=ffffff&animation=twinkling&fontAlignY=36&desc=Pure%20Go%20TDLib%20Client%20%C2%B7%20Iota%20coder&descAlignY=58&descAlign=50" width="100%" alt="gotdbot banner"/>
+  <img src="https://capsule-render.vercel.app/api?type=pulse&color=gradient&customColorList=6,11,19,26&height=220&section=header&text=gotdbot&fontSize=80&fontColor=ffffff&animation=scaleIn&fontAlignY=48&stroke=00E5FF&strokeWidth=1" width="100%" alt="gotdbot pulse banner"/>
 </p>
 
 <p align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=22&pause=1000&color=00E5FF&center=true&vCenter=true&width=720&lines=Pure+Go+wrapper+for+Telegram+TDLib;No+CGO+%C2%B7+powered+by+purego;Type-safe+generated+API;Conversations%2C+filters+%26+helpers;Go+1.27.1+%C2%B7+maintained+by+Iota+coder" alt="gotdbot typing banner"/>
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,19,26&height=120&section=header&text=&fontSize=1" width="100%" alt="wave transition"/>
+</p>
+
+<p align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=700&size=24&duration=2800&pause=800&color=00E5FF&center=true&vCenter=true&repeat=true&width=780&height=50&lines=Pure+Go+wrapper+for+Telegram+TDLib;No+CGO+%C2%B7+powered+by+purego;Type-safe+generated+API;Conversations%2C+filters+%26+helpers;Go+1.27.1+%C2%B7+maintained+by+Iota+coder" alt="gotdbot typing banner"/>
 </p>
 
 <p align="center">
@@ -13,6 +17,11 @@
   <a href="https://github.com/Iotatg/gotdbot/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-2EA44F?style=for-the-badge" alt="MIT License"/></a>
   <img src="https://img.shields.io/badge/Go-1.27.1+-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go 1.27.1"/>
   <img src="https://img.shields.io/badge/CGO-not%20required-7C4DFF?style=for-the-badge" alt="No CGO"/>
+  <img src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Fgithub.com%2FIotatg%2Fgotdbot&label=Visitors&icon=eye&color=%2300E5FF&style=for-the-badge" alt="Visitors"/>
+</p>
+
+<p align="center">
+  <img src="https://skillicons.dev/icons?i=go,linux,github,bots&theme=dark" alt="stack icons"/>
 </p>
 
 <p align="center">
@@ -29,7 +38,9 @@
   <a href="#license">License</a>
 </p>
 
----
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=soft&color=gradient&customColorList=6,11,19&height=70&text=Features&fontSize=28&fontColor=ffffff&animation=twinkling&fontAlignY=52" width="100%" alt="features divider"/>
+</p>
 
 ## Features
 
@@ -66,7 +77,9 @@
   </tr>
 </table>
 
----
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=soft&color=gradient&customColorList=11,19,26&height=70&text=Architecture&fontSize=28&fontColor=ffffff&animation=blinking&fontAlignY=52" width="100%" alt="architecture divider"/>
+</p>
 
 ## Architecture
 
@@ -80,7 +93,9 @@ flowchart LR
 
 Updates flow back the same path. Handlers, filters, and conversations sit on the client — you never talk to TDLib JSON by hand.
 
----
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=soft&color=gradient&customColorList=6,26,11&height=70&text=Install&fontSize=28&fontColor=ffffff&animation=fadeIn&fontAlignY=52" width="100%" alt="install divider"/>
+</p>
 
 ## Installation
 
@@ -106,7 +121,9 @@ go run github.com/Iotatg/gotdbot/scripts/tools
 
 </details>
 
----
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=soft&color=gradient&customColorList=19,6,11&height=70&text=Quick%20Start&fontSize=28&fontColor=ffffff&animation=scaleIn&fontAlignY=52" width="100%" alt="quick start divider"/>
+</p>
 
 ## Quick Start
 
@@ -143,7 +160,9 @@ func main() {
 }
 ```
 
----
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=soft&color=gradient&customColorList=26,6,19&height=70&text=Advanced&fontSize=28&fontColor=ffffff&animation=twinkling&fontAlignY=52" width="100%" alt="advanced divider"/>
+</p>
 
 ## Advanced Usage
 
@@ -198,7 +217,9 @@ msg.React(c, []gotdbot.ReactionType{&gotdbot.ReactionTypeEmoji{Emoji: "👍"}}, 
 
 </details>
 
----
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=soft&color=gradient&customColorList=11,6,26&height=70&text=Examples&fontSize=28&fontColor=ffffff&animation=blinking&fontAlignY=52" width="100%" alt="examples divider"/>
+</p>
 
 ## Examples
 
@@ -208,7 +229,9 @@ msg.React(c, []gotdbot.ReactionType{&gotdbot.ReactionTypeEmoji{Emoji: "👍"}}, 
 | [Conversation Bot](examples/conversation) | `Ask` / wait API |
 | [Multi Bot](examples/echoMultiBot) | Multiple clients in one process |
 
----
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=soft&color=gradient&customColorList=6,11,19&height=70&text=Contributing&fontSize=28&fontColor=ffffff&animation=fadeIn&fontAlignY=52" width="100%" alt="contributing divider"/>
+</p>
 
 ## Contributing
 
@@ -220,16 +243,23 @@ Default branch is `main`.
 4. Push: `git push origin feat/amazing-feature`
 5. Open a pull request against `main`
 
----
+<p align="center">
+  <img src="https://github-readme-stats.vercel.app/api/pin/?username=Iotatg&repo=gotdbot&theme=tokyonight&hide_border=true" alt="gotdbot stats"/>
+  <img src="https://github-readme-stats.vercel.app/api/top-langs/?username=Iotatg&layout=compact&theme=tokyonight&hide_border=true&langs_count=6" alt="top languages"/>
+</p>
+
+<p align="center">
+  <img src="https://starchart.cc/Iotatg/gotdbot.svg?variant=adaptive" alt="starchart" width="80%"/>
+</p>
 
 ## License
 
 MIT License. Copyright (c) 2026 [Iota coder](https://github.com/Iotatg). See [LICENSE](LICENSE).
 
 <p align="center">
-  <img src="https://github-readme-stats.vercel.app/api/pin/?username=Iotatg&repo=gotdbot&theme=tokyonight&hide_border=true" alt="gotdbot stats"/>
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=18&duration=2500&pause=1200&color=7C4DFF&center=true&vCenter=true&repeat=true&width=560&height=40&lines=Built+by+Iota+coder;github.com%2FIotatg%2Fgotdbot;Pure+Go+%C2%B7+Zero+CGO+%C2%B7+TDLib" alt="footer typing"/>
 </p>
 
 <p align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,19,26&height=140&section=footer&text=Iota%20coder&fontSize=28&fontColor=ffffff&animation=fadeIn" width="100%" alt="Iota coder footer"/>
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,19,26&height=160&section=footer&text=Iota%20coder&fontSize=32&fontColor=ffffff&animation=twinkling&fontAlignY=68" width="100%" alt="Iota coder footer"/>
 </p>
