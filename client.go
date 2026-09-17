@@ -54,6 +54,9 @@ type Client struct {
 	waiterCount atomic.Int64
 	wMu         sync.RWMutex
 
+	middlewares []Middleware
+	mwMu        sync.Mutex
+
 	// Auth state management
 	authErrorChan chan error
 	isAuthorized  bool
@@ -150,6 +153,13 @@ func NewClient(apiID int32, apiHash, tokenOrPhone string, config *ClientOpts) (*
 	c.AddUpdateMessageSendSucceededHandlerGroup(c.messageSendSucceededHandler, nil, -99)
 	c.AddUpdateMessageSendFailedHandlerGroup(c.messageSendFailedHandler, nil, -98)
 	c.AddUpdateConnectionStateHandlerGroup(c.connectionStateHandler, nil, -97)
+
+	if len(config.Plugins) > 0 {
+		c.LoadPlugins(config.Plugins, &PluginLoadOpts{
+			Include: config.PluginInclude,
+			Exclude: config.PluginExclude,
+		})
+	}
 	return c, nil
 }
 
@@ -279,26 +289,35 @@ func (c *Client) processor() {
 					return nil
 				}
 
-			outerLoop:
-				for _, group := range groups {
-					groupHandlers := handlersMap[group]
-					for _, h := range groupHandlers {
-						if h.CheckUpdate(c, update) {
-							err := h.HandleUpdate(c, update)
-							action := handleError(err)
+				dispatch := func() error {
+				outerLoop:
+					for _, group := range groups {
+						groupHandlers := handlersMap[group]
+						for _, h := range groupHandlers {
+							if h.CheckUpdate(c, update) {
+								err := h.HandleUpdate(c, update)
+								action := handleError(err)
 
-							if errors.Is(action, EndGroups) {
-								return
+								if errors.Is(action, EndGroups) {
+									return EndGroups
+								}
+								if errors.Is(action, ContinueGroups) {
+									break
+								}
+								if errors.Is(action, ContinueHandlers) {
+									continue
+								}
+								break outerLoop
 							}
-							if errors.Is(action, ContinueGroups) {
-								break // Move to next group
-							}
-							if errors.Is(action, ContinueHandlers) {
-								continue // Move to next handler in same group
-							}
-							// Handler matched and succeeded; move to next group.
-							break outerLoop
 						}
+					}
+					return nil
+				}
+
+				if err := c.runMiddlewares(update, dispatch); err != nil {
+					action := handleError(err)
+					if errors.Is(action, EndGroups) {
+						return
 					}
 				}
 			}()

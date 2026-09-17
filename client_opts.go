@@ -41,6 +41,9 @@ type ClientOpts struct {
 	LogStream               LogStream
 	AutoRetry               *AutoRetry
 	ParseMode               string
+	Plugins                 []*Plugin
+	PluginInclude           []string
+	PluginExclude           []string
 }
 
 // TDLibOptions contains TDLib options that can be set
