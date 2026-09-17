@@ -19,7 +19,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: "1.27.1"
 
       - name: Download dependencies
         run: go mod download
@@ -43,8 +43,8 @@ jobs:
 
           git checkout -B $BRANCH
 
-          git config user.name "AshokShau"
-          git config user.email "AshokShau@users.noreply.github.com"
+          git config user.name "Iotatg"
+          git config user.email "Iotatg@users.noreply.github.com"
 
           git add .
 

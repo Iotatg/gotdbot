@@ -8,8 +8,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/AshokShau/gotdbot"
-	"github.com/AshokShau/gotdbot/filters/message"
+	"github.com/Iotatg/gotdbot"
+	"github.com/Iotatg/gotdbot/filters/message"
 )
 
 func main() {
@@ -31,7 +31,7 @@ func main() {
 					{
 						Text: "GoTDBot GitHub",
 						Type: &gotdbot.InlineKeyboardButtonTypeUrl{
-							Url: "https://github.com/AshokShau/gotdbot",
+							Url: "https://github.com/Iotatg/gotdbot",
 						},
 					},
 				},

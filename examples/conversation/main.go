@@ -5,7 +5,7 @@ package main
 import (
 	"log"
 
-	"github.com/AshokShau/gotdbot"
+	"github.com/Iotatg/gotdbot"
 )
 
 func main() {

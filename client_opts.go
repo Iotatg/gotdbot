@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/AshokShau/gotdbot/logger"
+	"github.com/Iotatg/gotdbot/logger"
 )
 
 type AutoRetry struct {

@@ -8,8 +8,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/AshokShau/gotdbot"
-	"github.com/AshokShau/gotdbot/filters/message"
+	"github.com/Iotatg/gotdbot"
+	"github.com/Iotatg/gotdbot/filters/message"
 )
 
 var (

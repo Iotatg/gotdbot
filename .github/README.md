@@ -1,8 +1,8 @@
 # gotdbot
 
-![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/AshokShau/gotdbot)
-[![Go Reference](https://pkg.go.dev/badge/github.com/AshokShau/gotdbot.svg)](https://pkg.go.dev/github.com/AshokShau/gotdbot)
-[![License](https://img.shields.io/github/license/AshokShau/gotdbot)](../LICENSE)
+![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/Iotatg/gotdbot)
+[![Go Reference](https://pkg.go.dev/badge/github.com/Iotatg/gotdbot.svg)](https://pkg.go.dev/github.com/Iotatg/gotdbot)
+[![License](https://img.shields.io/github/license/Iotatg/gotdbot)](../LICENSE)
 
 **gotdbot** is a powerful, pure Go wrapper for [TDLib](https://github.com/tdlib/td) (Telegram Database Library). It provides a simple, idiomatic, and highly performant way to build Telegram clients and bots.
 
@@ -25,19 +25,19 @@ By using `purego`, **gotdbot** eliminates the need for CGO, making your build pr
 ## 📦 Installation
 
 ```bash
-go get github.com/AshokShau/gotdbot
+go get github.com/Iotatg/gotdbot
 ```
 
 ### Requirements
 
-- **Go**: 1.22 or newer.
+- **Go**: 1.27.1 or newer.
 - **TDLib**: Compiled `libtdjson` shared library.
 
 #### Quick TDLib Setup
 You can use the built-in tool to automatically download the latest [precompiled TDLib binaries](https://github.com/FallenProjects/tdlib-build/releases) for your platform:
 
 ```bash
-go run github.com/AshokShau/gotdbot/scripts/tools
+go run github.com/Iotatg/gotdbot/scripts/tools
 ```
 
 ---
@@ -51,7 +51,7 @@ package main
 
 import (
 	"log"
-	"github.com/AshokShau/gotdbot"
+	"github.com/Iotatg/gotdbot"
 )
 
 func main() {
@@ -91,7 +91,7 @@ Filters allow you to precisely target which updates your handlers should process
 
 ```go
 import (
-    "github.com/AshokShau/gotdbot/filters/message"
+    "github.com/Iotatg/gotdbot/filters/message"
 )
 
 // ...
@@ -101,8 +101,8 @@ bot.OnMessage(handlePrivate, message.And(message.Private, message.Incoming))
 ```
 
 Available filter packages:
-- `github.com/AshokShau/gotdbot/filters/message` - Filters for `gotdbot.Message`
-- `github.com/AshokShau/gotdbot/filters/callbackquery` - Filters for `gotdbot.UpdateNewCallbackQuery`
+- `github.com/Iotatg/gotdbot/filters/message` - Filters for `gotdbot.Message`
+- `github.com/Iotatg/gotdbot/filters/callbackquery` - Filters for `gotdbot.UpdateNewCallbackQuery`
 
 ### Conversations
 The `Ask` method makes it easy to handle multi-step interactions.

@@ -3,8 +3,8 @@ package message
 import (
 	"regexp"
 
-	"github.com/AshokShau/gotdbot"
-	"github.com/AshokShau/gotdbot/filters"
+	"github.com/Iotatg/gotdbot"
+	"github.com/Iotatg/gotdbot/filters"
 )
 
 // Prefix checks if the message text starts with the given prefix.

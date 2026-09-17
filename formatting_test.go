@@ -3,7 +3,7 @@ package gotdbot_test
 import (
 	"testing"
 
-	"github.com/AshokShau/gotdbot"
+	"github.com/Iotatg/gotdbot"
 )
 
 func TestUnparseEntities(t *testing.T) {

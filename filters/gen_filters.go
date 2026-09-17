@@ -3,7 +3,7 @@
 
 package filters
 
-import "github.com/AshokShau/gotdbot"
+import "github.com/Iotatg/gotdbot"
 
 type (
 	// UpdateAccentColors The list of supported accent colors has changed

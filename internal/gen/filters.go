@@ -19,7 +19,7 @@ func generateEvents(types []TLType, classes map[string]*TLClass) {
 	var fsb strings.Builder
 	fsb.WriteString(header)
 	fsb.WriteString("package filters\n\n")
-	fsb.WriteString("import \"github.com/AshokShau/gotdbot\"\n\n")
+	fsb.WriteString("import \"github.com/Iotatg/gotdbot\"\n\n")
 	fsb.WriteString("type (\n")
 	for _, t := range updates {
 		structName := toCamelCase(t.Name)
