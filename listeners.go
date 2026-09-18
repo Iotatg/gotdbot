@@ -14,6 +14,10 @@ func (c *Client) ListenMessage(chatId int64, filter func(*Message) bool, timeout
 	return c.Ask(chatId, &WaitMessageOpts{Filter: filter, Timeout: timeout})
 }
 
+func (c *Client) ListenMessageFrom(chatId, userId int64, filter func(*Message) bool, timeout time.Duration) (*Message, error) {
+	return c.AskFrom(chatId, userId, &WaitMessageOpts{Filter: filter, Timeout: timeout})
+}
+
 func (c *Client) ListenCallback(filter func(*UpdateNewCallbackQuery) bool, timeout time.Duration) (*UpdateNewCallbackQuery, error) {
 	u, err := c.WaitFor(func(client *Client, update TlObject) bool {
 		cb, ok := update.(*UpdateNewCallbackQuery)

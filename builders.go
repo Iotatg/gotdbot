@@ -229,3 +229,15 @@ func RequestPollButton(text string, quiz bool) KeyboardButton {
 		},
 	}
 }
+
+func PackedCallbackButton(text, action string, args ...string) (InlineKeyboardButton, error) {
+	packed, err := PackCallback(action, args...)
+	if err != nil {
+		return InlineKeyboardButton{}, err
+	}
+	return CallbackButton(text, packed), nil
+}
+
+func MenuButton(text, url string) *BotMenuButton {
+	return &BotMenuButton{Text: text, Url: url}
+}

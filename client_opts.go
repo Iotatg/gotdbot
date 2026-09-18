@@ -44,6 +44,7 @@ type ClientOpts struct {
 	Plugins                 []*Plugin
 	PluginInclude           []string
 	PluginExclude           []string
+	CallbackSecret          []byte
 }
 
 // TDLibOptions contains TDLib options that can be set
