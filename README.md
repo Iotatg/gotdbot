@@ -68,7 +68,7 @@
   <tr>
     <td width="50%" valign="top">
       <b>Conversations</b><br/>
-      Built-in <code>Ask</code> / wait helpers for sequential multi-step flows.
+      Built-in <code>Ask</code> / <code>AskFrom</code> wait helpers for sequential multi-step flows.
     </td>
     <td width="50%" valign="top">
       <b>Bots and users</b><br/>
@@ -202,6 +202,56 @@ bot.OnCommand("rename", func(c *gotdbot.Client, u *gotdbot.Message) error {
 	return nil
 })
 ```
+
+User-scoped wait in groups (`v0.12.0`):
+
+```go
+res, err := c.AskFrom(u.ChatId, u.SenderID(), &gotdbot.WaitMessageOpts{
+	Timeout: 30 * time.Second,
+})
+```
+
+</details>
+
+<details>
+<summary><b>Callback pack</b></summary>
+
+```go
+btn, err := gotdbot.PackedCallbackButton("Skip", "play", "skip")
+action, args, err := gotdbot.UnpackCallback(cb.DataString())
+```
+
+HMAC-signed payloads use `ClientOpts.CallbackSecret` with `PackCallbackSigned` / `UnpackCallbackSigned`. Telegram's 64-byte limit is enforced.
+
+</details>
+
+<details>
+<summary><b>Rate limit</b></summary>
+
+```go
+bot.Use(gotdbot.RateLimit(5, time.Second))
+```
+
+Inbound per-user limiter for messages and callback queries. Excess updates are dropped before handlers. Outbound flood wait is still `IsFloodWait` / `RetryAfterFloodWait`.
+
+</details>
+
+<details>
+<summary><b>Mini Apps</b></summary>
+
+```go
+bot.OnWebAppData(func(c *gotdbot.Client, m *gotdbot.Message) error {
+	data := m.WebAppData()
+	_, err := m.ReplyText(c, data.Data, nil)
+	return err
+}, nil)
+
+_ = bot.SetBotMenuButton("Open", "https://example.com/app", 0)
+
+fields, err := gotdbot.ValidateWebAppInitData(botToken, initData, time.Hour)
+```
+
+`ValidateWebAppInitData` checks Telegram Mini App `initData` HMAC. It does not host a Mini App frontend.
 
 </details>
 

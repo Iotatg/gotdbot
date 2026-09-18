@@ -1,7 +1,7 @@
 # gotdbot v0.12.0 design
 
 **Date:** 2026-09-18
-**Status:** Draft (awaiting user review of this file)
+**Status:** Approved
 **Owner:** Iota coder
 **Affects:** `github.com/Iotatg/gotdbot` (this repo)
 **Depends on:** published `v0.11.0` (`2ef1500`), TDLib `v1.8.67`
@@ -12,13 +12,14 @@
 
 `v0.11.0` already ships Pyrogram-style DX: handler aliases, plugins, middleware, chat-scoped `Ask`, `ParseCommand`, keyboard builders, flood-wait helpers, media groups.
 
-AishaMusic still hits three library gaps:
+AishaMusic and other bots still hit four library gaps:
 
 1. **Group conversations are chat-scoped.** `Ask(chatId)` accepts any sender in the chat. Admin flows and multi-step prompts in groups need user-scoped wait.
 2. **Callback data is raw strings.** AishaMusic uses prefixes (`play_skip`, `help_`) and `strings.Contains`. There is no pack/unpack helper and no authenticity check. Telegram limits callback data to 64 bytes.
 3. **Inbound spam is unfiltered.** `floodwait.go` covers outbound TDLib retry. There is no inbound per-user rate-limit middleware for `Client.Use`.
+4. **Mini App DX is thin.** Generated TDLib already has `WebAppButton`, `AnswerWebAppQuery`, `SetMenuButton`, `GetWebAppUrl`, `OpenWebApp`, and `Message.WebAppData()`. Missing: a handler alias, a menu-button helper, and HMAC validation of Mini App `initData`.
 
-A TDLib bump, FSM/scenes, mock client, worker pool, and Bot-API rewrite are out of scope for this tag.
+A TDLib bump, FSM/scenes, mock client, worker pool, Mini App hosting, and Bot-API rewrite are out of scope for this tag.
 
 ## 2. Goal
 
@@ -34,8 +35,9 @@ Must ship:
 1. `AskFrom(chatId, userId, opts)` — user-scoped wait. Existing `Ask` stays chat-scoped.
 2. `PackCallback` / `UnpackCallback` plus HMAC-signed variants. `CallbackButton(text, data string)` signature unchanged.
 3. `RateLimit(n, window) Middleware` for `Client.Use`. Key = sender user id. Exceed = silent drop.
+4. Mini App DX: `OnWebAppData`, `SetBotMenuButton` / `MenuButton`, `ValidateWebAppInitData`.
 
-Success: AishaMusic can call the new APIs without changing existing `OnCommand` / prefix callbacks / `Ask` call sites. Tests run without `libtdjson`.
+Success: existing `OnCommand` / prefix callbacks / `Ask` call sites keep compiling. Tests run without `libtdjson`.
 
 ## 3. Architecture
 
@@ -44,7 +46,8 @@ Your Go app
     │
     ├─ AskFrom ──► WaitForChat(chatId) + sender filter
     ├─ PackCallback / PackCallbackSigned ──► CallbackButton data (≤64 bytes)
-    └─ Client.Use(RateLimit(n, window)) ──► handler dispatch
+    ├─ Client.Use(RateLimit(n, window)) ──► handler dispatch
+    └─ OnWebAppData / SetBotMenuButton / ValidateWebAppInitData
            │
            ▼
      gotdbot Client (v0.11.0 surface unchanged)
@@ -53,7 +56,7 @@ Your Go app
      purego → libtdjson v1.8.67 → Telegram
 ```
 
-Three new DX units in the root `gotdbot` package. No generated-API regeneration. No new subpackages.
+Four new DX units in the root `gotdbot` package. No generated-API regeneration. No new subpackages. No Mini App HTML/JS hosting.
 
 ## 4. Compatibility
 
@@ -64,9 +67,10 @@ Unchanged:
 - `Ask(chatId, opts)`
 - `ListenMessage` (still wraps `Ask`)
 - `CallbackButton(text, data string)`
+- `WebAppButton` / `KeyboardWebAppButton`
 - `Client.Use`, plugin loader, handler groups
 - `floodwait.go` outbound helpers
-- generated types/methods
+- generated types/methods (`AnswerWebAppQuery`, `SetMenuButton`, …)
 
 AishaMusic may adopt the new APIs in a later pin to `v0.12.0`. That pin is not part of this tag.
 
@@ -89,7 +93,7 @@ Behavior:
   4. not match `CancellationFilter` (if it matches → `ConversationCancelled`)
 - Timeout → `ConversationTimeout` (existing).
 - Concurrent waiters in the same chat keep today's processor behavior: every matching waiter is offered the update (non-blocking send). First-match-wins is not guaranteed if two waiters share a filter; callers should use distinct `userId` values.
-- Implementation extracts an unexported `askFromFilter(chatId, userId int64, opts *WaitMessageOpts) func(*Client, TlObject) bool` so unit tests can assert sender matching without a live waiter loop.
+- Implementation extracts an unexported `askFromFilter(chatId, userId int64, opts *WaitMessageOpts) func(*Client, TlObject) bool` so unit tests can assert sender matching without a live waiter loop. `userId == 0` in the filter means "any sender" and is used only by `Ask`.
 
 Thin alias for symmetry with `ListenMessage`:
 
@@ -99,7 +103,7 @@ func (c *Client) ListenMessageFrom(chatId, userId int64, filter func(*Message) b
 
 This is `AskFrom` with `WaitMessageOpts{Filter, Timeout}`.
 
-`Ask` and `ListenMessage` are not modified.
+`Ask` and `ListenMessage` are not modified at the API level. `Ask` may share `askFromFilter` internally with `userId == 0`.
 
 ### 5.2 Callback pack
 
@@ -153,17 +157,6 @@ Telegram limit: packed string must be ≤ 64 bytes (`ErrCallbackTooLong`). Signe
 
 Unsigned `UnpackCallback` on signed data still splits fields; the last field will look like hmac hex. Callers who need authenticity must use `UnpackCallbackSigned`.
 
-New errors in `errors.go`:
-
-| Error | When |
-|---|---|
-| `ErrInvalidUserID` | `AskFrom` / `ListenMessageFrom` with `userId == 0` |
-| `ErrCallbackTooLong` | packed data > 64 bytes |
-| `ErrCallbackInvalid` | empty action or empty data |
-| `ErrCallbackColon` | `:` in action or an arg |
-| `ErrCallbackBadHMAC` | signed unpack mismatch or missing hmac field |
-| `ErrNoCallbackSecret` | signed helper with empty secret |
-
 ### 5.3 RateLimit middleware
 
 ```go
@@ -182,6 +175,61 @@ func RateLimit(n int, window time.Duration) Middleware
 Does not replace `floodwait.go` (outbound). Does not answer callback queries on drop.
 
 `processor` already offers updates to waiters **before** `runMiddlewares`. RateLimit therefore gates handler dispatch only. `Ask` / `AskFrom` waiters are not rate-limited.
+
+### 5.4 Mini App DX
+
+Already present in `v0.11.0` (do not duplicate):
+
+- `WebAppButton(text, url)` / `KeyboardWebAppButton(text, url)`
+- `Message.WebAppData()` / `filters/message.WebAppData`
+- generated `AnswerWebAppQuery`, `SetMenuButton`, `GetMenuButton`, `GetWebAppUrl`, `OpenWebApp`
+
+New in `v0.12.0`:
+
+```go
+func (c *Client) OnWebAppData(handler func(client *Client, message *Message) error, filter func(*Message) bool) *MessageHandler
+```
+
+Registers `OnMessage` with an inner filter that requires `msg.WebAppData() != nil`, then applies the caller filter. Existing `OnMessage` still works.
+
+```go
+func MenuButton(text, url string) *BotMenuButton
+func (c *Client) SetBotMenuButton(text, url string, userId int64) error
+```
+
+`SetBotMenuButton` wraps generated `SetMenuButton`. `userId == 0` means all users (TDLib semantics). Empty `url` still sends `BotMenuButton{Text, Url}` (clears to default commands menu when both are empty).
+
+```go
+func ValidateWebAppInitData(botToken, initData string, maxAge time.Duration) (map[string]string, error)
+func (c *Client) ValidateWebAppInitData(initData string, maxAge time.Duration) (map[string]string, error)
+```
+
+HMAC as Telegram Mini App docs (no TDLib):
+
+1. Parse `initData` as a query string.
+2. Take `hash`, drop it from the map.
+3. Build `data_check_string`: remaining `key=value` pairs sorted by key, joined with `\n`.
+4. `secret_key = HMAC-SHA256(key="WebAppData", data=botToken)`.
+5. Compare `hex(HMAC-SHA256(key=secret_key, data=data_check_string))` to `hash` with `hmac.Equal`.
+6. `maxAge == 0` skips `auth_date`. Otherwise `auth_date` older than `maxAge` → `ErrWebAppDataExpired`. Missing/unparseable `auth_date` when `maxAge > 0` → `ErrWebAppDataInvalid`.
+7. Empty token, empty initData, missing hash, or bad hmac → `ErrWebAppDataInvalid`.
+
+Client method uses `c.botToken`. Empty token → `ErrWebAppDataInvalid`.
+
+Not this tag: hosting Mini App HTML/JS, Telegram.WebApp JS SDK, payment invoices inside Mini Apps.
+
+### 5.5 New errors
+
+| Error | When |
+|---|---|
+| `ErrInvalidUserID` | `AskFrom` / `ListenMessageFrom` with `userId == 0` |
+| `ErrCallbackTooLong` | packed data > 64 bytes |
+| `ErrCallbackInvalid` | empty action or empty data |
+| `ErrCallbackColon` | `:` in action or an arg |
+| `ErrCallbackBadHMAC` | signed unpack mismatch or missing hmac field |
+| `ErrNoCallbackSecret` | signed helper with empty secret |
+| `ErrWebAppDataInvalid` | Mini App initData missing/tampered/unparseable |
+| `ErrWebAppDataExpired` | Mini App `auth_date` older than `maxAge` |
 
 ## 6. Data flow
 
@@ -206,22 +254,31 @@ Does not replace `floodwait.go` (outbound). Does not answer callback queries on 
 3. `RateLimit` inspects the update, maybe drops it, otherwise `next()`.
 4. Waiters (`Ask` / `AskFrom`) are not subject to RateLimit.
 
+### Mini App
+
+1. User opens a Web App from `WebAppButton` / menu button.
+2. Keyboard Web App sends `MessageWebAppDataReceived` → `OnWebAppData`.
+3. HTTPS Mini App backend calls `ValidateWebAppInitData(botToken, initData, maxAge)` before trusting `user`.
+4. Bot answers queries with existing `AnswerWebAppQuery`.
+
 ## 7. Files
 
 | File | Change |
 |---|---|
 | `consts.go` | `Version = "v0.12.0"` |
-| `conversation.go` | `AskFrom` |
+| `conversation.go` | `AskFrom`, `askFromFilter` |
 | `listeners.go` | `ListenMessageFrom` |
 | `callback_pack.go` | new: pack/unpack + signed |
-| `builders.go` | `PackedCallbackButton` |
+| `builders.go` | `PackedCallbackButton`, `MenuButton` |
 | `ratelimit.go` | new: `RateLimit` |
+| `webapp.go` | new: `OnWebAppData`, `SetBotMenuButton`, `ValidateWebAppInitData` |
 | `client_opts.go` | `CallbackSecret []byte` |
 | `errors.go` | new sentinel errors |
 | `callback_pack_test.go` | new table tests |
 | `ratelimit_test.go` | new tests via `newTestClient` + `runMiddlewares` |
 | `conversation_test.go` | `AskFrom` userId 0; `askFromFilter` sender match/reject |
-| `README.md` | Advanced section: AskFrom, callback pack, RateLimit |
+| `webapp_test.go` | initData HMAC + `OnWebAppData` filter |
+| `README.md` | Advanced section: AskFrom, callback pack, RateLimit, Mini Apps |
 
 No edits to `gen_*.go`.
 
@@ -255,13 +312,21 @@ AskFrom:
 - `userId == 0` → `ErrInvalidUserID` without blocking
 - constructed filter accepts matching sender and rejects other senders (unit-test the filter function; do not require a live waiter loop)
 
+Mini App:
+
+- valid initData round-trip
+- tampered hash → `ErrWebAppDataInvalid`
+- stale `auth_date` with `maxAge` → `ErrWebAppDataExpired`
+- `OnWebAppData` matches `MessageWebAppDataReceived` and rejects plain text
+- `MenuButton` fills `BotMenuButton`
+
 Command to run (Go 1.27.1):
 
 ```bash
 GOROOT=/usr/local/go-1.27.1 GOTOOLCHAIN=local /usr/local/go-1.27.1/bin/go test ./...
 ```
 
-## 9. Out of scope
+## 9. Out of scope (this tag)
 
 - FSM / scenes
 - mock / test Client that injects updates
@@ -272,10 +337,57 @@ GOROOT=/usr/local/go-1.27.1 GOTOOLCHAIN=local /usr/local/go-1.27.1/bin/go test .
 - RateLimit auto-reply or callback `Answer`
 - shared/redis rate limiter
 - outbound flood (already `floodwait.go`)
+- hosting Mini App HTML/JS or the Telegram.WebApp JS SDK
 - pinning AishaMusic to `v0.12.0` (follow-up)
 
-## 10. Follow-up after this tag
+## 10. Later tags (roadmap, not implemented now)
+
+These are real gaps or likely future Telegram surface. Documented so v0.12.0 stays a slice, not a dump.
+
+**Framework DX**
+
+- FSM / scenes (aiogram-style states, per user+chat)
+- mock / test Client that records calls and injects updates
+- command prefixes beyond `/`, ignore-mention vs require-mention
+- update context bag (`ctx.Value` style data on a handler context)
+- router groups with scoped middleware (not only global `Use`)
+- typed callback handlers (`OnCallback("play", ...)`)
+
+**Mini Apps / Web Apps (beyond this tag)**
+
+- `OnWebAppMessageSent` alias for `UpdateWebAppMessageSent`
+- helpers around `GetMainWebApp` / `GetWebAppLinkUrl` / `CloseWebApp`
+- Mini App file-download check (`CheckWebAppFileDownload`)
+- example Mini App backend using `ValidateWebAppInitData`
+
+**Product Telegram features (generated API exists; DX wrappers later)**
+
+- Stars / payments / invoices / pre-checkout convenience
+- gifts, giveaways, paid media, checklists
+- forum topics and Direct Messages topics
+- business connection helpers beyond `OnBusinessConnection`
+- stories, boosts, checklists as first-class send helpers (some `Reply*` already exist)
+
+**Ops**
+
+- i18n catalog
+- metrics / tracing middleware
+- persistent session store
+- worker pool / job scheduler
+
+**TDLib**
+
+- bump `libtdjson` and regenerate `gen_*.go` only if a real public binary newer than `v1.8.67` exists
+
+**Never fake in gotdbot**
+
+- hosting a Mini App frontend
+- Bot-API HTTP rewrite
+- paid third-party APIs
+- a Telegram client UI
+
+## 11. Follow-up after this tag
 
 1. Publish `v0.12.0` on `Iotatg/gotdbot`.
 2. AishaMusic: replace `replace => ./gotdbot-fork` with `github.com/Iotatg/gotdbot@v0.12.0` when ready.
-3. Later tags: FSM, mock client, ops (metrics/tracing), or a real `libtdjson` bump if a public binary exists.
+3. Pick the next tag from section 10 (likely FSM or mock client).

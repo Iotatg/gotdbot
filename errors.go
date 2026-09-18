@@ -24,4 +24,14 @@ var (
 	ErrNotMediaGroup    = errors.New("the message does not belong to a media group")
 	ErrDownloadStopped  = errors.New("file download stopped before completion")
 	ErrInvalidMessageID = errors.New("message id must be greater than zero")
+	ErrInvalidUserID    = errors.New("user id must be greater than zero")
+
+	ErrCallbackTooLong  = errors.New("callback data exceeds 64 bytes")
+	ErrCallbackInvalid  = errors.New("callback data is invalid")
+	ErrCallbackColon    = errors.New("callback action and args must not contain ':'")
+	ErrCallbackBadHMAC  = errors.New("callback hmac is invalid")
+	ErrNoCallbackSecret = errors.New("callback secret is empty")
+
+	ErrWebAppDataInvalid = errors.New("web app init data is invalid")
+	ErrWebAppDataExpired = errors.New("web app init data has expired")
 )
