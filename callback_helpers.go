@@ -74,3 +74,8 @@ func (t *UpdateNewCallbackQuery) EditMessageCaption(c *Client, caption string, o
 func (t *UpdateNewCallbackQuery) EditMessageReplyMarkup(c *Client, replyMarkup ReplyMarkup) (*Message, error) {
 	return c.EditMessageReplyMarkup(t.ChatId, t.MessageId, &EditMessageReplyMarkupOpts{ReplyMarkup: replyMarkup})
 }
+
+// EditMessageMedia edits the media of the message associated with the callback query.
+func (t *UpdateNewCallbackQuery) EditMessageMedia(c *Client, content InputMessageContent, opts *EditMessageMediaOpts) (*Message, error) {
+	return c.EditMessageMedia(t.ChatId, content, t.MessageId, opts)
+}

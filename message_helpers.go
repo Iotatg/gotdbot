@@ -168,6 +168,33 @@ func (m *Message) ReplyToMessageID() int64 {
 	return 0
 }
 
+func (m *Message) Quote() *TextQuote {
+	if m == nil || m.ReplyTo == nil {
+		return nil
+	}
+	r, ok := m.ReplyTo.(*MessageReplyToMessage)
+	if !ok {
+		return nil
+	}
+	return r.Quote
+}
+
+func (m *Message) HasQuote() bool {
+	return m.Quote() != nil
+}
+
+func (m *Message) IsMentioned() bool {
+	return m != nil && m.ContainsUnreadMention
+}
+
+func (m *Message) IsBusiness() bool {
+	return m != nil && m.SenderBusinessBotUserId != 0
+}
+
+func (m *Message) IsEphemeral() bool {
+	return m != nil && m.EphemeralMessageId != 0
+}
+
 // Text returns the text of the message.
 func (m *Message) Text() string {
 	if m.Content == nil {

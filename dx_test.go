@@ -245,6 +245,70 @@ func TestDefaultAdminRightsWelcome(t *testing.T) {
 	}
 }
 
+func TestV0130Builders(t *testing.T) {
+	pay := gotdbot.PayButton("Pay")
+	if _, ok := pay.Type.(*gotdbot.InlineKeyboardButtonTypeBuy); !ok {
+		t.Fatalf("pay button")
+	}
+	pw := gotdbot.PasswordCallbackButton("Confirm", "own")
+	p, ok := pw.Type.(*gotdbot.InlineKeyboardButtonTypeCallbackWithPassword)
+	if !ok || string(p.Data) != "own" {
+		t.Fatalf("password callback button")
+	}
+	mb := gotdbot.RequestManagedBotButton("Create", 9, "Aisha", "aisha_bot")
+	m, ok := mb.Type.(*gotdbot.KeyboardButtonTypeRequestManagedBot)
+	if !ok || m.Id != 9 || m.SuggestedName != "Aisha" || m.SuggestedUsername != "aisha_bot" {
+		t.Fatalf("managed bot button")
+	}
+	cur := gotdbot.SwitchInlineCurrentButton("share", "q")
+	plain := gotdbot.SwitchInlineButton("share", "q")
+	c1, ok1 := cur.Type.(*gotdbot.InlineKeyboardButtonTypeSwitchInline)
+	c2, ok2 := plain.Type.(*gotdbot.InlineKeyboardButtonTypeSwitchInline)
+	if !ok1 || !ok2 {
+		t.Fatalf("switch inline types")
+	}
+	if _, ok := c1.TargetChat.(*gotdbot.TargetChatCurrent); !ok {
+		t.Fatalf("current target")
+	}
+	if c1.Query != c2.Query {
+		t.Fatalf("switch inline alias mismatch")
+	}
+}
+
+func TestLeftoverMessageFilters(t *testing.T) {
+	out := &gotdbot.Message{IsOutgoing: true}
+	if !message.Me(out) || message.Me(&gotdbot.Message{}) {
+		t.Fatalf("me filter")
+	}
+	mentioned := &gotdbot.Message{ContainsUnreadMention: true}
+	if !message.Mentioned(mentioned) || message.Mentioned(&gotdbot.Message{}) {
+		t.Fatalf("mentioned filter")
+	}
+	live := &gotdbot.Message{Content: &gotdbot.MessageLiveLocation{}}
+	static := &gotdbot.Message{Content: &gotdbot.MessageLocation{Location: &gotdbot.Location{}}}
+	if !message.LiveLocation(live) || message.LiveLocation(static) {
+		t.Fatalf("live location filter")
+	}
+	page := &gotdbot.Message{Content: &gotdbot.MessageText{Text: &gotdbot.FormattedText{Text: "hi"}, LinkPreview: &gotdbot.LinkPreview{}}}
+	plain := &gotdbot.Message{Content: &gotdbot.MessageText{Text: &gotdbot.FormattedText{Text: "hi"}}}
+	if !message.WebPage(page) || message.WebPage(plain) {
+		t.Fatalf("web page filter")
+	}
+	quoted := &gotdbot.Message{ReplyTo: &gotdbot.MessageReplyToMessage{Quote: &gotdbot.TextQuote{}}}
+	reply := &gotdbot.Message{ReplyTo: &gotdbot.MessageReplyToMessage{}}
+	if !message.Quote(quoted) || message.Quote(reply) {
+		t.Fatalf("quote filter")
+	}
+	biz := &gotdbot.Message{SenderBusinessBotUserId: 3}
+	if !message.Business(biz) || message.Business(&gotdbot.Message{}) {
+		t.Fatalf("business filter")
+	}
+	eph := &gotdbot.Message{EphemeralMessageId: 4}
+	if !message.Ephemeral(eph) || message.Ephemeral(&gotdbot.Message{}) {
+		t.Fatalf("ephemeral filter")
+	}
+}
+
 func TestRequestUsersButtonDefaultQuantity(t *testing.T) {
 	btn := gotdbot.RequestUsersButton("pick", 1, nil)
 	u, ok := btn.Type.(*gotdbot.KeyboardButtonTypeRequestUsers)
