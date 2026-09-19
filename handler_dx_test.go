@@ -98,10 +98,101 @@ func TestHandlerAliasesRegister(t *testing.T) {
 	c.OnUserStatus(func(client *Client, update *UpdateUserStatus) error { return nil }, nil)
 	c.OnMessageReaction(func(client *Client, update *UpdateMessageReaction) error { return nil }, nil)
 	c.OnGuest(func(client *Client, update *UpdateNewGuestQuery) error { return nil }, nil)
+	c.OnEditedBusinessMessage(func(client *Client, update *UpdateBusinessMessageEdited) error { return nil }, nil)
+	c.OnDeletedBusinessMessages(func(client *Client, update *UpdateBusinessMessagesDeleted) error { return nil }, nil)
+	c.OnPurchasedPaidMedia(func(client *Client, update *UpdatePaidMediaPurchased) error { return nil }, nil)
+	c.OnManagedBot(func(client *Client, update *UpdateManagedBot) error { return nil }, nil)
+	c.OnMessageReactionCount(func(client *Client, update *UpdateMessageReactions) error { return nil }, nil)
 	c.OnError(func(client *Client, update TlObject, err error) error { return err })
 	if c.errorHandler == nil {
 		t.Fatalf("OnError not stored")
 	}
+	if n := len(c.handlers.Load().handlers[0]); n != 9 {
+		t.Fatalf("expected 9 aliases, got %d", n)
+	}
+}
+
+func callbackQuery(data string) *UpdateNewCallbackQuery {
+	return &UpdateNewCallbackQuery{
+		Payload: &CallbackQueryPayloadData{Data: []byte(data)},
+	}
+}
+
+func TestOnCallbackMatchesAction(t *testing.T) {
+	c := newTestClient()
+	c.OnCallback("play", func(client *Client, update *UpdateNewCallbackQuery) error { return nil }, nil)
+	h := c.handlers.Load().handlers[0][0]
+	if !h.CheckUpdate(c, callbackQuery("play")) {
+		t.Fatalf("play should match")
+	}
+	if !h.CheckUpdate(c, callbackQuery("play:skip")) {
+		t.Fatalf("play:skip should match")
+	}
+	if h.CheckUpdate(c, callbackQuery("help")) {
+		t.Fatalf("help should not match")
+	}
+	if h.CheckUpdate(c, callbackQuery("")) {
+		t.Fatalf("empty data should not match")
+	}
+}
+
+func TestOnCallbackEmptyAction(t *testing.T) {
+	c := newTestClient()
+	c.OnCallback("", func(client *Client, update *UpdateNewCallbackQuery) error { return nil }, nil)
+	h := c.handlers.Load().handlers[0][0]
+	if !h.CheckUpdate(c, callbackQuery("play")) {
+		t.Fatalf("empty action should match unpackable data")
+	}
+	if h.CheckUpdate(c, callbackQuery("")) {
+		t.Fatalf("empty data should not match")
+	}
+}
+
+func TestOnCallbackExtraFilter(t *testing.T) {
+	c := newTestClient()
+	c.OnCallback("play", func(client *Client, update *UpdateNewCallbackQuery) error { return nil }, func(u *UpdateNewCallbackQuery) bool {
+		return u.SenderUserId == 7
+	})
+	h := c.handlers.Load().handlers[0][0]
+	ok := callbackQuery("play")
+	ok.SenderUserId = 7
+	if !h.CheckUpdate(c, ok) {
+		t.Fatalf("matching filter")
+	}
+	bad := callbackQuery("play")
+	bad.SenderUserId = 1
+	if h.CheckUpdate(c, bad) {
+		t.Fatalf("extra filter should reject")
+	}
+}
+
+func TestOnRawUpdate(t *testing.T) {
+	c := newTestClient()
+	c.OnRawUpdate(func(client *Client, update TlObject) error { return nil }, nil)
+	h := c.handlers.Load().handlers[0][0]
+	if !h.CheckUpdate(c, &UpdateNewMessage{}) {
+		t.Fatalf("nil filter should match")
+	}
+	c2 := newTestClient()
+	c2.OnRawUpdateGroup(func(client *Client, update TlObject) error { return nil }, func(update TlObject) bool {
+		_, ok := update.(*UpdateNewCallbackQuery)
+		return ok
+	}, 3)
+	h2 := c2.handlers.Load().handlers[3][0]
+	if h2.CheckUpdate(c2, &UpdateNewMessage{}) {
+		t.Fatalf("filter should reject")
+	}
+	if !h2.CheckUpdate(c2, &UpdateNewCallbackQuery{}) {
+		t.Fatalf("filter should accept callback")
+	}
+}
+
+func TestCallbackEditMessageMediaArgs(t *testing.T) {
+	q := &UpdateNewCallbackQuery{ChatId: 11, MessageId: 22}
+	if q.ChatId != 11 || q.MessageId != 22 {
+		t.Fatalf("callback ids")
+	}
+	_ = (*UpdateNewCallbackQuery).EditMessageMedia
 }
 
 func TestConnectDisconnectHandlers(t *testing.T) {

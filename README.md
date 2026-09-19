@@ -175,6 +175,8 @@ import (
 )
 
 bot.OnMessage(handlePrivate, message.And(message.Private, message.Incoming))
+bot.OnMessage(handleLive, message.LiveLocation)
+bot.OnMessage(handleQuoted, message.Quote)
 ```
 
 Filter packages:
@@ -223,6 +225,19 @@ action, args, err := gotdbot.UnpackCallback(cb.DataString())
 
 HMAC-signed payloads use `ClientOpts.CallbackSecret` with `PackCallbackSigned` / `UnpackCallbackSigned`. Telegram's 64-byte limit is enforced.
 
+Typed action match (`v0.13.0`):
+
+```go
+bot.OnCallback("play", func(c *gotdbot.Client, q *gotdbot.UpdateNewCallbackQuery) error {
+	_, args, _ := gotdbot.UnpackCallback(q.DataString())
+	text := "ok"
+	if len(args) > 0 {
+		text = args[0]
+	}
+	return q.Answer(c, 0, false, text, "")
+}, nil)
+```
+
 </details>
 
 <details>
@@ -252,6 +267,42 @@ fields, err := gotdbot.ValidateWebAppInitData(botToken, initData, time.Hour)
 ```
 
 `ValidateWebAppInitData` checks Telegram Mini App `initData` HMAC. It does not host a Mini App frontend.
+
+</details>
+
+<details>
+<summary><b>Raw updates</b></summary>
+
+```go
+bot.OnRawUpdate(func(c *gotdbot.Client, update gotdbot.TlObject) error {
+	c.Logger.Info("update", "type", update.GetType())
+	return gotdbot.ContinueHandlers
+}, nil)
+```
+
+Catch-all handler. Return `ContinueHandlers` if typed handlers in the same group must still run.
+
+</details>
+
+<details>
+<summary><b>Keyboard builders</b></summary>
+
+```go
+markup := gotdbot.InlineKeyboard(
+	gotdbot.InlineRow(
+		gotdbot.PayButton("Pay"),
+		gotdbot.PasswordCallbackButton("Confirm", "own"),
+		gotdbot.SwitchInlineCurrentButton("share", "q"),
+	),
+)
+reply := gotdbot.ReplyKeyboard(
+	gotdbot.KeyboardRow(
+		gotdbot.RequestManagedBotButton("Create", 9, "Aisha", "aisha_bot"),
+	),
+)
+```
+
+`PayButton` must be the first button of an invoice keyboard. `SwitchInlineCurrentButton` aliases `SwitchInlineButton`.
 
 </details>
 

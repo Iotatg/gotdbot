@@ -264,7 +264,31 @@ func (m *Message) WebAppData() *MessageWebAppDataReceived {
 	return c
 }
 
-func (m *Message) HasPhoto() bool       { return m.Photo() != nil }
+func (m *Message) LiveLocation() *MessageLiveLocation {
+	if m == nil {
+		return nil
+	}
+	c, ok := m.Content.(*MessageLiveLocation)
+	if !ok {
+		return nil
+	}
+	return c
+}
+
+func (m *Message) LinkPreview() *LinkPreview {
+	if m == nil {
+		return nil
+	}
+	c, ok := m.Content.(*MessageText)
+	if !ok {
+		return nil
+	}
+	return c.LinkPreview
+}
+
+func (m *Message) HasLiveLocation() bool { return m.LiveLocation() != nil }
+func (m *Message) HasLinkPreview() bool  { return m.LinkPreview() != nil }
+func (m *Message) HasPhoto() bool        { return m.Photo() != nil }
 func (m *Message) HasVideo() bool       { return m.Video() != nil }
 func (m *Message) HasAnimation() bool   { return m.Animation() != nil }
 func (m *Message) HasAudio() bool       { return m.Audio() != nil }

@@ -228,6 +228,34 @@ func WebAppData(msg *gotdbot.Message) bool {
 	return msg.WebAppData() != nil
 }
 
+func Me(msg *gotdbot.Message) bool {
+	return msg != nil && msg.IsOutgoingMessage()
+}
+
+func Mentioned(msg *gotdbot.Message) bool {
+	return msg.IsMentioned()
+}
+
+func LiveLocation(msg *gotdbot.Message) bool {
+	return msg.HasLiveLocation()
+}
+
+func WebPage(msg *gotdbot.Message) bool {
+	return msg.HasLinkPreview()
+}
+
+func Quote(msg *gotdbot.Message) bool {
+	return msg.HasQuote()
+}
+
+func Business(msg *gotdbot.Message) bool {
+	return msg.IsBusiness()
+}
+
+func Ephemeral(msg *gotdbot.Message) bool {
+	return msg.IsEphemeral()
+}
+
 // FromUserID checks if the message sender's user ID matches the given ID.
 func FromUserID(id int64) filters.Message {
 	return func(msg *gotdbot.Message) bool {

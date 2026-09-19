@@ -76,6 +76,70 @@ func (c *Client) OnGuest(handler func(client *Client, update *UpdateNewGuestQuer
 	c.OnUpdateNewGuestQuery(handler, filter)
 }
 
+func (c *Client) OnEditedBusinessMessage(handler func(client *Client, update *UpdateBusinessMessageEdited) error, filter func(u *UpdateBusinessMessageEdited) bool) {
+	c.OnUpdateBusinessMessageEdited(handler, filter)
+}
+
+func (c *Client) OnDeletedBusinessMessages(handler func(client *Client, update *UpdateBusinessMessagesDeleted) error, filter func(u *UpdateBusinessMessagesDeleted) bool) {
+	c.OnUpdateBusinessMessagesDeleted(handler, filter)
+}
+
+func (c *Client) OnPurchasedPaidMedia(handler func(client *Client, update *UpdatePaidMediaPurchased) error, filter func(u *UpdatePaidMediaPurchased) bool) {
+	c.OnUpdatePaidMediaPurchased(handler, filter)
+}
+
+func (c *Client) OnManagedBot(handler func(client *Client, update *UpdateManagedBot) error, filter func(u *UpdateManagedBot) bool) {
+	c.OnUpdateManagedBot(handler, filter)
+}
+
+func (c *Client) OnMessageReactionCount(handler func(client *Client, update *UpdateMessageReactions) error, filter func(u *UpdateMessageReactions) bool) {
+	c.OnUpdateMessageReactions(handler, filter)
+}
+
+func (c *Client) OnCallback(action string, handler func(client *Client, update *UpdateNewCallbackQuery) error, filter func(u *UpdateNewCallbackQuery) bool) {
+	c.OnCallbackGroup(action, handler, filter, 0)
+}
+
+func (c *Client) OnCallbackGroup(action string, handler func(client *Client, update *UpdateNewCallbackQuery) error, filter func(u *UpdateNewCallbackQuery) bool, group int) {
+	c.OnCallbackQueryGroup(handler, func(u *UpdateNewCallbackQuery) bool {
+		unpacked, _, err := UnpackCallback(u.DataString())
+		if err != nil {
+			return false
+		}
+		if action != "" && unpacked != action {
+			return false
+		}
+		if filter != nil && !filter(u) {
+			return false
+		}
+		return true
+	}, group)
+}
+
+type rawUpdateHandler struct {
+	filter   func(TlObject) bool
+	response func(client *Client, update TlObject) error
+}
+
+func (h *rawUpdateHandler) CheckUpdate(client *Client, update TlObject) bool {
+	if h.filter != nil && !h.filter(update) {
+		return false
+	}
+	return true
+}
+
+func (h *rawUpdateHandler) HandleUpdate(client *Client, update TlObject) error {
+	return h.response(client, update)
+}
+
+func (c *Client) OnRawUpdate(handler func(client *Client, update TlObject) error, filter func(TlObject) bool) {
+	c.OnRawUpdateGroup(handler, filter, 0)
+}
+
+func (c *Client) OnRawUpdateGroup(handler func(client *Client, update TlObject) error, filter func(TlObject) bool, group int) {
+	c.AddHandlerGroup(&rawUpdateHandler{filter: filter, response: handler}, group)
+}
+
 func (c *Client) OnError(handler func(client *Client, update TlObject, err error) error) {
 	c.errorMu.Lock()
 	c.errorHandler = handler

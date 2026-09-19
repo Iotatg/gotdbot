@@ -65,6 +65,10 @@ func SwitchInlineButton(text, query string) InlineKeyboardButton {
 	}
 }
 
+func SwitchInlineCurrentButton(text, query string) InlineKeyboardButton {
+	return SwitchInlineButton(text, query)
+}
+
 func SwitchInlineChosenButton(text, query string, allowUsers, allowBots, allowGroups, allowChannels bool) InlineKeyboardButton {
 	return InlineKeyboardButton{
 		Text: text,
@@ -97,6 +101,20 @@ func GameButton(text string) InlineKeyboardButton {
 	return InlineKeyboardButton{
 		Text: text,
 		Type: &InlineKeyboardButtonTypeCallbackGame{},
+	}
+}
+
+func PayButton(text string) InlineKeyboardButton {
+	return InlineKeyboardButton{
+		Text: text,
+		Type: &InlineKeyboardButtonTypeBuy{},
+	}
+}
+
+func PasswordCallbackButton(text, data string) InlineKeyboardButton {
+	return InlineKeyboardButton{
+		Text: text,
+		Type: &InlineKeyboardButtonTypeCallbackWithPassword{Data: []byte(data)},
 	}
 }
 
@@ -226,6 +244,17 @@ func RequestPollButton(text string, quiz bool) KeyboardButton {
 		Type: &KeyboardButtonTypeRequestPoll{
 			ForceQuiz:    quiz,
 			ForceRegular: !quiz,
+		},
+	}
+}
+
+func RequestManagedBotButton(text string, id int32, suggestedName, suggestedUsername string) KeyboardButton {
+	return KeyboardButton{
+		Text: text,
+		Type: &KeyboardButtonTypeRequestManagedBot{
+			Id:                id,
+			SuggestedName:     suggestedName,
+			SuggestedUsername: suggestedUsername,
 		},
 	}
 }
