@@ -219,6 +219,12 @@ func (c *Client) AddHandlerGroup(handler Handler, group int) {
 	defer c.hMu.Unlock()
 
 	oldData := c.handlers.Load()
+	if oldData == nil {
+		// A zero-value Client (typically one built in a test) has no handler
+		// table yet. Only NewClient allocates one, so treat nil as empty rather
+		// than dereferencing it. RemoveHandlerGroup already guards this way.
+		oldData = &handlersData{handlers: make(map[int][]Handler)}
+	}
 	newMap := make(map[int][]Handler, len(oldData.handlers))
 	for k, v := range oldData.handlers {
 		newMap[k] = v

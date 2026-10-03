@@ -2,6 +2,49 @@
 
 All notable changes to this project are documented here.
 
+## v0.14.1
+
+Patch release. One bug fix and four additive helpers. No existing API changed
+signature or behaviour, so upgrading from v0.14.0 requires no code changes.
+
+### Fixed
+
+- `Client.AddHandlerGroup` no longer panics on a `Client` whose handler table
+  has not been initialised. `handlers` is an `atomic.Pointer` that only
+  `NewClient` allocates, so registering any handler on a zero-value `Client`
+  dereferenced nil and crashed:
+  `panic: runtime error: invalid memory address or nil pointer dereference`.
+  This made `&Client{}` unusable in tests, which is the obvious way to exercise
+  a handler without a live TDLib connection. `RemoveHandlerGroup` already
+  treated nil as empty; registration now does the same. The library's own tests
+  never caught this because their helper constructs the client by hand and
+  stores an empty table first, which is exactly the workaround callers had to
+  rediscover.
+
+### Added
+
+- `Message.Payload() string` — the text after the command name with surrounding
+  whitespace trimmed but interior spacing preserved. `Args` and `ArgsList` split
+  with `strings.Fields` and re-join with single spaces, which loses information
+  that handlers with free-form text need: a multi-word greeting, a note, a
+  caption with deliberate spacing. `Payload` is the equivalent of Pyrogram's
+  `message.text.split(maxsplit=1)[1].strip()`.
+- `SenderUserID(s MessageSender) (int64, bool)` — resolves the user id behind a
+  polymorphic `MessageSender`, reporting false when the sender is a chat (a
+  channel post or an anonymous admin). Handles both the pointer and value
+  forms, since the TDLib unmarshaler stores pointers while values are
+  convenient when building structs in tests.
+- `SenderChatID(s MessageSender) (int64, bool)` — the mirror image, for the
+  chat-sender case.
+- `ChatMember.MemberUserID() (int64, bool)` — `SenderUserID` for a
+  `ChatMember`, which carries the same `MessageSender` union in `MemberId`.
+  Nil-safe.
+- `IsMemberStatus(s ChatMemberStatus) bool` — reports whether a status is the
+  plain member state, i.e. an ordinary participant who is not an administrator
+  and has not left. Lets a join handler express
+  `IsMemberStatus(new) && !IsMemberStatus(old)` without a type switch, which
+  correctly distinguishes a join from a promotion.
+
 ## v0.14.0
 
 Additive release. No existing API changed, so upgrading from v0.13.0 is a

@@ -110,7 +110,7 @@ Updates flow back the same path. Handlers, filters, and conversations sit on the
 ## Installation
 
 ```bash
-go get github.com/Iotatg/gotdbot@v0.14.0
+go get github.com/Iotatg/gotdbot@v0.14.1
 ```
 
 ### Requirements
@@ -324,6 +324,44 @@ msg.ReplyPhoto(c, gotdbot.InputFileLocal{Path: "image.png"}, nil)
 msg.Delete(c, true)
 msg.Pin(c, false, false)
 msg.React(c, []gotdbot.ReactionType{&gotdbot.ReactionTypeEmoji{Emoji: "👍"}}, nil)
+```
+
+</details>
+
+<details>
+<summary><b>Reading free-form command text (v0.14.1)</b></summary>
+
+`ArgsList` splits on whitespace and `Args` re-joins with single spaces, which is
+right for `/gift 10 20` and wrong for `/welcome welcome to the group`. `Payload`
+returns the remainder untouched, matching Pyrogram's
+`message.text.split(maxsplit=1)[1].strip()`.
+
+```go
+// ArgsList: ["a", "b"]   Args: "a b"   Payload: "a    b"
+body := msg.Payload()
+```
+
+The `MessageSender` and `ChatMember` helpers unwrap the polymorphic sender
+fields, so a join handler does not need a type switch.
+
+```go
+func onMember(c *gotdbot.Client, u *gotdbot.UpdateChatMember) error {
+    // A join is "member now, not a member before". Using IsMemberStatus on both
+    // sides keeps a promotion from counting as a join.
+    if !gotdbot.IsMemberStatus(u.NewChatMember.Status) ||
+        gotdbot.IsMemberStatus(u.OldChatMember.Status) {
+        return nil
+    }
+    uid, ok := u.NewChatMember.MemberUserID() // false for anonymous senders
+    if !ok {
+        return nil
+    }
+    return greet(c, u.ChatId, uid)
+}
+
+// Anywhere a sender is polymorphic:
+uid, isUser := gotdbot.SenderUserID(u.SenderId)
+chatID, isChat := gotdbot.SenderChatID(u.SenderId)
 ```
 
 </details>

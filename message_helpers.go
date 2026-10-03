@@ -92,9 +92,101 @@ func (m *Message) IsCommand() bool {
 	return false
 }
 
+// SenderUserID returns the user id behind a MessageSender, and false when the
+// sender is a chat rather than a user (channel posts, anonymous admins, or the
+// "message sender is a chat" case).
+//
+// The type switch covers both the pointer and value forms because TDLib's
+// unmarshaler stores pointers, while values are convenient when building
+// structs in tests.
+func SenderUserID(s MessageSender) (int64, bool) {
+	switch v := s.(type) {
+	case *MessageSenderUser:
+		return v.UserId, true
+	case MessageSenderUser:
+		return v.UserId, true
+	case *MessageSenderChat:
+		return v.ChatId, false
+	case MessageSenderChat:
+		return v.ChatId, false
+	}
+	return 0, false
+}
+
+// SenderChatID returns the chat id behind a MessageSender, and false when the
+// sender is a user rather than a chat.
+func SenderChatID(s MessageSender) (int64, bool) {
+	switch v := s.(type) {
+	case *MessageSenderChat:
+		return v.ChatId, true
+	case MessageSenderChat:
+		return v.ChatId, true
+	case *MessageSenderUser:
+		return v.UserId, false
+	case MessageSenderUser:
+		return v.UserId, false
+	}
+	return 0, false
+}
+
+// MemberUserID returns the user id of a ChatMember, and false when the member
+// is a chat rather than a user.
+func (m *ChatMember) MemberUserID() (int64, bool) {
+	if m == nil {
+		return 0, false
+	}
+	return SenderUserID(m.MemberId)
+}
+
+// IsMemberStatus reports whether a ChatMemberStatus is the plain "member" state,
+// i.e. an ordinary participant who is not an administrator and has not left.
+func IsMemberStatus(s ChatMemberStatus) bool {
+	_, ok := s.(ChatMemberStatusMember)
+	return ok
+}
+
 // Args returns the message arguments excluding the command itself.
 func (m *Message) Args() string {
 	return strings.Join(m.ArgsList(), " ")
+}
+
+// Payload returns the text after the command name, with surrounding
+// whitespace trimmed but interior spacing preserved.
+//
+// Args and ArgsList split on strings.Fields and re-join with single spaces,
+// which loses information. Handlers that need the raw remainder — a multi-word
+// greeting, a free-form note, a caption with intentional spacing — want this
+// instead. It is the equivalent of Python's
+// `message.text.split(maxsplit=1)[1].strip()`.
+//
+// Returns "" when the message is only a command with no arguments.
+func (m *Message) Payload() string {
+	text := m.Text()
+
+	// Skip the leading run of whitespace, then the first word (the command),
+	// then the whitespace that separates it from the payload.
+	i := 0
+	for i < len(text) && isSpaceByte(text[i]) {
+		i++
+	}
+	for i < len(text) && !isSpaceByte(text[i]) {
+		i++
+	}
+	for i < len(text) && isSpaceByte(text[i]) {
+		i++
+	}
+	return strings.TrimRight(text[i:], " \t\r\n\v\f")
+}
+
+// isSpaceByte matches the ASCII whitespace set that Python's str.split treats
+// as a separator for these purposes. Bytes above 0x7f are never split on, so
+// multi-byte characters cannot be cut in half.
+func isSpaceByte(b byte) bool {
+	switch b {
+	case ' ', '\t', '\n', '\r', '\v', '\f':
+		return true
+	}
+	return false
 }
 
 // ArgsList returns all arguments excluding the command name.
