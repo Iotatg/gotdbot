@@ -19,10 +19,15 @@ type ClientOpts struct {
 	PanicHandler func(client *Client, update TlObject, r interface{})
 	ErrorHandler func(client *Client, update TlObject, err error) error
 
-	LibraryPath             string
-	UseTestDC               bool
-	DatabaseDirectory       string
-	FilesDirectory          string
+	LibraryPath       string
+	UseTestDC         bool
+	DatabaseDirectory string
+	FilesDirectory    string
+	// UploadDir is the directory used to stage in-memory bytes for
+	// UploadBytes/InputFileBytes. TDLib resolves relative file parameters
+	// against its own "file" directory, so the default matches that layout.
+	// Ignored when FilesDirectory is set, which takes precedence.
+	UploadDir               string
 	DatabaseEncryptionKey   string
 	UseFileDatabase         *bool
 	UseChatInfoDatabase     *bool
