@@ -607,27 +607,35 @@ func (c *Client) SendWithContext(ctx context.Context, req TlObject) (TlObject, e
 
 	for {
 		var extra string
+		var sendData []byte
+		var err error
+
 		if isFn {
 			extra = strconv.FormatUint(c.requestID.Add(1), 10)
 			fn.setExtra(extra)
+			sendData, err = json.Marshal(req)
+		} else {
+			// A TlObject that is not one of ours cannot set @extra, because
+			// setExtra is unexported and nothing outside this package can
+			// implement it. That used to end here: the request went out and the
+			// caller got (nil, nil) - a call that had already been made to
+			// Telegram, with no error and no response to check.
+			//
+			// Hand-written request types are the documented way to reach a TDLib
+			// method that has not been generated yet, so the fallback gives such
+			// a request the same correlation the generated ones get. See
+			// marshalWithExtra.
+			extra = strconv.FormatUint(c.requestID.Add(1), 10)
+			sendData, err = marshalWithExtra(req, extra)
 		}
-
-		sendData, err := json.Marshal(req)
 		if err != nil {
 			return nil, err
 		}
 
-		var ch chan TlObject
-		if isFn {
-			ch = make(chan TlObject, 1)
-			c.pendingRequests.Store(extra, ch)
-		}
+		ch := make(chan TlObject, 1)
+		c.pendingRequests.Store(extra, ch)
 
 		tdjson.SendBytes(c.clientID, sendData)
-
-		if !isFn {
-			return nil, nil
-		}
 
 		var result TlObject
 
@@ -982,4 +990,46 @@ func (c *Client) WaitForContext(ctx context.Context, chatId int64, filter func(c
 // update arrives or timeout occurs.
 func (c *Client) WaitForChat(chatId int64, filter func(client *Client, update TlObject) bool, timeout time.Duration) (TlObject, error) {
 	return c.WaitForContext(context.Background(), chatId, filter, timeout)
+}
+
+// marshalWithExtra serialises a request this package did not generate and adds the
+// @extra the response dispatcher correlates on, which such a type cannot set for
+// itself.
+//
+// The request is round-tripped through map[string]json.RawMessage so that every
+// untouched field keeps its exact bytes: RawMessage is copied verbatim, so a
+// chat_id like -1004379943083 is not reformatted and cannot lose precision the
+// way a decode into float64 would.
+func marshalWithExtra(req TlObject, extra string) ([]byte, error) {
+	raw, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		return nil, fmt.Errorf("gotdbot: %s did not marshal to a JSON object: %w",
+			req.GetType(), err)
+	}
+	if fields == nil {
+		return nil, fmt.Errorf("gotdbot: %s marshalled to JSON null, which is not a request",
+			req.GetType())
+	}
+
+	// A generated type carries its own @type; a hand-written one usually only
+	// has GetType(). TDLib routes on @type, so a request without it is not a
+	// request it will act on - which is the same silent failure this whole
+	// function exists to remove, one step earlier. Filled in only when absent, so
+	// a type that declares its own is left alone.
+	if len(fields["@type"]) == 0 {
+		fields["@type"] = json.RawMessage(strconv.Quote(req.GetType()))
+	}
+
+	quoted, err := json.Marshal(extra)
+	if err != nil {
+		return nil, err
+	}
+	fields["@extra"] = quoted
+
+	return json.Marshal(fields)
 }
