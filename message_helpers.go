@@ -36,6 +36,12 @@ func (m *Message) IsEditedMessage() bool {
 }
 
 // IsChannel checks if the message is from a channel.
+//
+// It cannot actually tell a channel from a supergroup: both have a -100... id, so
+// this is IsSupergroupOrChannel and returns true for every supergroup in Telegram.
+// It is kept because renaming a method is a breaking change, but the name
+// overstates what it knows. Use Chat.ChatTypeIsChannel, or
+// Message.MessageChatType, when the difference matters.
 func (m *Message) IsChannel() bool {
 	return m.IsSupergroupOrChannel()
 }
