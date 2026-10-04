@@ -8,9 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync/atomic"
-	"time"
-
-	"github.com/Iotatg/gotdbot/internal/tdjson"
 )
 
 // Invoke sends a raw TDLib request and returns the decoded response.
@@ -50,39 +47,21 @@ func (c *Client) InvokeJSONWithContext(ctx context.Context, request string) (TlO
 		return nil, fmt.Errorf("gotdbot: InvokeJSON requires a non-empty request")
 	}
 
-	fn := newRawJSONRequest(trimmed)
-	// The dispatcher keys pending responses off @extra, so a function request
-	// is required to receive the reply.
-	fn.setExtra(c.nextRawRequestID())
-	ch := make(chan TlObject, 1)
-	c.pendingRequests.Store(fn.Extra, ch)
-
-	select {
-	case <-ctx.Done():
-		c.pendingRequests.Delete(fn.Extra)
-		go func() { <-ch }()
-		return nil, ctx.Err()
-	default:
-	}
-
-	tdjson.SendBytes(c.clientID, []byte(trimmed))
-
-	select {
-	case res := <-ch:
-		c.pendingRequests.Delete(fn.Extra)
-		if errObj, isErr := res.(*Error); isErr {
-			return nil, errObj
-		}
-		return res, nil
-	case <-ctx.Done():
-		c.pendingRequests.Delete(fn.Extra)
-		go func() { <-ch }()
-		return nil, ctx.Err()
-	case <-time.After(invokeJSONTimeout):
-		c.pendingRequests.Delete(fn.Extra)
-		go func() { <-ch }()
-		return nil, SendTimeout
-	}
+	// Through Send, not past it.
+	//
+	// This used to build its own pending-request entry and then send the caller's
+	// JSON string straight to TDLib, which meant rawJSONRequest.MarshalJSON - the
+	// method whose entire job is to put @extra into the document - was never
+	// called. TDLib echoed no @extra, the dispatcher routed the reply to the
+	// update channel instead of to the waiting caller, and every InvokeJSON call
+	// sat out the full timeout and returned SendTimeout. The escape hatch was
+	// unusable for exactly the methods it existed for, and it looked like the
+	// method being missing rather than like a wiring mistake.
+	//
+	// rawJSONRequest is a tlFunction, so Send takes the generated path: it assigns
+	// the extra, marshals, and MarshalJSON injects it. One send path, no second
+	// copy of the pending-request and timeout logic to keep in step.
+	return c.SendWithContext(ctx, newRawJSONRequest(trimmed))
 }
 
 // rawJSONRequest adapts a pre-serialized request to the tlFunction contract
@@ -118,9 +97,6 @@ var rawRequestCounter atomic.Uint64
 func (c *Client) nextRawRequestID() string {
 	return fmt.Sprintf("raw%d", rawRequestCounter.Add(1))
 }
-
-// invokeJSONTimeout bounds a raw JSON request that produced no response.
-const invokeJSONTimeout = 30 * time.Second
 
 // ── In-memory uploads ───────────────────────────────────────────────────────
 

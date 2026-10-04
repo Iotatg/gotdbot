@@ -597,6 +597,14 @@ func (c *Client) Send(req TlObject) (TlObject, error) {
 
 // SendWithContext dispatches req to TDLib and waits for the response, honouring ctx.
 func (c *Client) SendWithContext(ctx context.Context, req TlObject) (TlObject, error) {
+	// Before the request goes out, not after. A context that is already dead means
+	// the caller has given up, and TDLib would be told to do work whose result
+	// nobody will read - which for a mutation like a ban or a title is worse than
+	// wasted work.
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
 	reqType := strings.ToLower(req.GetType())
 
 	isChatAttemptedLoad := reqType == "getchat"
